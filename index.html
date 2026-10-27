@@ -313,6 +313,9 @@ svg .p.on2{fill:url(#mg2);stroke:#FFC3A8;filter:url(#gl)}
 .thumb.tap::after{content:"";position:absolute;right:3px;bottom:3px;width:15px;height:15px;border-radius:50%;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3.5 2.5l4 2.5-4 2.5z' fill='%23fff'/%3E%3C/svg%3E") center/9px no-repeat;box-shadow:0 0 8px rgba(47,140,255,.8)}
 .thumb.tap:active{transform:scale(.94);box-shadow:var(--glow)}
 .exanim{position:relative}
+.exanim.is3d{height:min(86vw,380px);padding:0;overflow:hidden;touch-action:none}
+.exanim.is3d canvas{border-radius:16px;cursor:grab}
+.animctl .seg{padding:2px}.animctl .seg button{min-height:32px;padding:4px 12px}
 .animctl{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
 .cues.err li::marker{color:var(--warn)}
 .howto{display:flex;flex-direction:column;gap:8px}
@@ -422,9 +425,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=17"></script>
-<script src="ai.js?v=17"></script>
-<script src="figure.js?v=17"></script>
+<script src="planner.js?v=18"></script>
+<script src="ai.js?v=18"></script>
+<script src="figure.js?v=18"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -825,7 +828,7 @@ function barChart(days,target){
 /* ---------- sheet ---------- */
 let SH=null;
 function openSheet(html,ctx){SH=ctx||{};$("#sheet").innerHTML=`<div class="grab"></div>`+html;$("#sheetwrap").hidden=false;document.body.style.overflow="hidden"}
-function closeSheet(){stopLiveScan();if(window.Figure)Figure.stop();$("#sheetwrap").hidden=true;$("#sheet").innerHTML="";SH=null;document.body.style.overflow=""}
+function closeSheet(){stopLiveScan();if(window.Figure)Figure.stop();stop3d();$("#sheetwrap").hidden=true;$("#sheet").innerHTML="";SH=null;document.body.style.overflow=""}
 $("#sheetwrap").addEventListener("click",e=>{if(e.target.id==="sheetwrap")closeSheet()});
 const sheetHd=t=>`<div class="sheethd"><h2 class="grow">${t}</h2><button class="iconbtn" data-act="close" aria-label="Schließen">✕</button></div>`;
 
@@ -1500,8 +1503,10 @@ function exInfoSheet(exId,tab){
  const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const best=bestSet(exId);const hist=exHistory(exId).slice(0,6);
  const slow=!!SH.slow,mode=SH.figMode||"play";
  let body="";
- if(t==="ov")body=`<div class="card exanim" id="exAnim"></div>
-  <div class="animctl">${[["play","▶ Abspielen"],["slow","🐢 Zeitlupe"],["start","Start"],["end","Ende"]].map(([k,l])=>`<button class="chip ${(k==="slow"?slow&&mode==="play":k===mode&&!(k==="play"&&slow))?"on":""}" data-act="figMode" data-v="${k}">${l}</button>`).join("")}</div>
+ const d3=use3d(),view=SH.view3d||"angle";
+ if(t==="ov")body=`<div class="card exanim${d3?" is3d":""}" id="exAnim"></div>
+  <div class="animctl"><div class="seg" style="min-width:96px"><button class="${d3?"on":""}" data-act="figDim" data-v="3d">3D</button><button class="${d3?"":"on"}" data-act="figDim" data-v="2d">2D</button></div>${[["play","▶ Abspielen"],["slow","🐢 Zeitlupe"],["start","Start"],["end","Ende"]].map(([k,l])=>`<button class="chip ${(k==="slow"?slow&&mode==="play":k===mode&&!(k==="play"&&slow))?"on":""}" data-act="figMode" data-v="${k}">${l}</button>`).join("")}</div>
+  ${d3?`<div class="animctl">${[["side","Seite"],["angle","Schräg"],["front","Vorne"],["back","Hinten"]].map(([k,l])=>`<button class="chip ${view===k?"on":""}" data-act="view3d" data-v="${k}">${l}</button>`).join("")}</div><div class="small muted" style="text-align:center">Mit dem Finger auf der Figur ziehen, um sie zu drehen.</div>`:""}
   <div class="small muted" style="text-align:center"><span class="legend red"></span> Zielmuskel: ${PL.MUSN[ex.m]}${sec.size?` &nbsp; <span class="legend sec"></span> hilft mit: ${[...sec].map(m=>PL.MUSN[m]).join(", ")}`:""}</div>
   ${FIG_NOTE[ex.id]?`<div class="hint">${esc(FIG_NOTE[ex.id])}</div>`:""}
   <div class="card howto"><div class="lbl acc">So geht's</div><ol class="cues">${(CUES_ID[ex.id]||CUES[ex.pat]||[]).map(c=>`<li>${c}</li>`).join("")}</ol></div>
@@ -1512,10 +1517,27 @@ function exInfoSheet(exId,tab){
   ${hist.length?`<div class="lbl">Letzte Einheiten</div><div class="card" style="padding:4px 14px">${hist.map(h=>`<div class="kv"><span class="muted">${dayLabel(h.date)}</span><span class="num">${setsTxt(h.sets)}</span></div>`).join("")}</div>`:""}`;
  const back=SH.backItem&&M.plan&&M.plan.days[SH.backItem[0]]?`<button class="btn ghost block" data-act="item" data-d="${SH.backItem[0]}" data-i="${SH.backItem[1]}">‹ Zurück zur Übung im Plan</button>`:"";
  openSheet(`${sheetHd(esc(ex.n))}<div class="stack">${segBar(t,[["ov","Anleitung"],["mus","Muskeln"],["hist","Verlauf"]],"exTab")}${body}${back}</div>`,SH);
- if(t==="ov")drawFig();else if(window.Figure)Figure.stop();
+ if(t==="ov")drawFig();else{if(window.Figure)Figure.stop();stop3d()}
 }
+/* 3D-Ansicht (figure3d.js + three.js) wird erst beim ersten Öffnen geladen; ohne WebGL bleibt die 2D-Grafik */
+let FIG3=null,F3P=null,F3TOK=0,NO3D=false;
+function use3d(){let v="3d";try{v=localStorage.getItem("et-dim")||"3d"}catch(e){}return v==="3d"&&!NO3D}
+function stop3d(){F3TOK++;if(FIG3){try{FIG3.ctl.dispose()}catch(e){}FIG3=null}}
 function drawFig(){
  const el=$("#exAnim"),ex=SH&&EXMAP[SH.exInfo];if(!el||!ex||!window.Figure)return;const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const mode=SH.figMode||"play";
+ if(use3d()){
+  Figure.stop();
+  if(FIG3&&FIG3.el===el&&FIG3.id===ex.id){FIG3.ctl.setMode(mode,!!SH.slow);return}
+  stop3d();const tok=F3TOK;el.classList.add("is3d");el.innerHTML=`<div class="loading" style="padding-top:42%">3D wird geladen …</div>`;
+  (F3P||(F3P=import("./figure3d.js?v=1"))).then(m=>{
+   if(tok!==F3TOK||!SH||SH.exInfo!==ex.id||!el.isConnected)return;
+   if(!m.supported())throw new Error("kein WebGL");
+   const ctl=m.create(el,ex.id,prim,sec,{mode,slow:!!SH.slow,onInteract:()=>document.querySelectorAll('[data-act="view3d"]').forEach(c=>c.classList.remove("on"))});
+   ctl.setView(SH.view3d||"angle");FIG3={el,id:ex.id,ctl};
+  }).catch(err=>{if(tok!==F3TOK)return;NO3D=true;F3P=null;el.classList.remove("is3d");toast("3D läuft auf diesem Gerät nicht. Du siehst die 2D-Grafik.");if(SH&&SH.exInfo===ex.id)exInfoSheet(ex.id,"ov")});
+  return;
+ }
+ stop3d();el.classList.remove("is3d");
  if(mode==="start"||mode==="end"){Figure.stop();el.innerHTML=Figure.svg(ex.id,mode==="end"?1:0,prim,sec)}
  else Figure.animate(el,ex.id,prim,sec,{slow:!!SH.slow});
 }
@@ -1774,6 +1796,8 @@ document.addEventListener("click",e=>{
  case"moveTo":moveTo(+d.v);break;
  case"exInfo":if(SH&&SH.exInfo!==d.id){SH.slow=false;SH.figMode="play"}exInfoSheet(d.id);break;
  case"exInfoItem":{const bi=SH&&SH.di!=null?[SH.di,SH.ii]:null;SH={backItem:bi};exInfoSheet(d.id);break}
+ case"figDim":{try{localStorage.setItem("et-dim",d.v)}catch(e){}if(d.v==="3d")NO3D=false;stop3d();exInfoSheet(SH.exInfo,"ov");break}
+ case"view3d":SH.view3d=d.v;if(FIG3)FIG3.ctl.setView(d.v);document.querySelectorAll('[data-act="view3d"]').forEach(c=>c.classList.toggle("on",c===b));break;
  case"figMode":{if(d.v==="slow"){SH.slow=!(SH.slow&&SH.figMode==="play");SH.figMode="play"}else{SH.figMode=d.v;if(d.v==="play")SH.slow=false}document.querySelectorAll(".animctl .chip").forEach(c=>{const k=c.dataset.v;c.classList.toggle("on",k==="slow"?SH.slow&&SH.figMode==="play":k===SH.figMode&&!(k==="play"&&SH.slow))});drawFig();break}
  case"exTab":exInfoSheet(SH.exInfo,d.t);break;
  case"goLib":UI.planTab="lib";if(location.hash==="#plan")render();else location.hash="#plan";break;
