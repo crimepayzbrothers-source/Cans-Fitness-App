@@ -309,6 +309,13 @@ svg .p.on2{fill:url(#mg2);stroke:#FFC3A8;filter:url(#gl)}
 .thumb .exthumb{width:58px;height:58px}
 .thumb.sm{width:42px;height:46px}
 .thumb.sm .exthumb{width:44px;height:44px}
+.thumb.tap{position:relative;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.thumb.tap::after{content:"";position:absolute;right:3px;bottom:3px;width:15px;height:15px;border-radius:50%;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3.5 2.5l4 2.5-4 2.5z' fill='%23fff'/%3E%3C/svg%3E") center/9px no-repeat;box-shadow:0 0 8px rgba(47,140,255,.8)}
+.thumb.tap:active{transform:scale(.94);box-shadow:var(--glow)}
+.exanim{position:relative}
+.animctl{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.cues.err li::marker{color:var(--warn)}
+.howto{display:flex;flex-direction:column;gap:8px}
 .legend.plan{background:none;border:1px dashed var(--accent)}
 .legend.sec{background:#FF9F6E}
 .exlist{display:flex;flex-direction:column;gap:8px}
@@ -415,9 +422,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=16"></script>
-<script src="ai.js?v=16"></script>
-<script src="figure.js?v=16"></script>
+<script src="planner.js?v=17"></script>
+<script src="ai.js?v=17"></script>
+<script src="figure.js?v=17"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -743,7 +750,7 @@ function vTrain(){
  return`<div class="section">
  <div class="row"><div class="grow"><h2>${esc(A.dayName)}</h2><div class="small muted"><span id="elapsed">${mins}</span> min · ${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} Sätze erledigt${A.deload?" · Deload":""}</div></div><button class="btn ghost" data-act="focus">Fokus</button><button class="btn primary" data-act="finish">Fertig</button></div>
  ${A.exercises.map((e,ei)=>{const ex=EXMAP[e.ex];const L=lastSets(e.ex,A.id);const tg=e.target;const rc=e.rec;return`<div class="card wex" data-ei="${ei}">
-  <div class="row">${exMini(ex)}<div class="grow"><h3><button data-act="exInfo" data-id="${e.ex}">${esc(ex?ex.n:e.ex)} ⓘ</button></h3><div class="small muted">${tg?`Ziel ${schemeTxt(tg)} · RIR ${tg.rir} · Pause ${restTxt(tg.rest)}`:"Freie Übung"}</div></div><button class="iconbtn" data-act="exMenu" data-ei="${ei}" aria-label="Optionen">⋯</button></div>
+  <div class="row">${exMini(ex,1)}<div class="grow"><h3><button data-act="exInfo" data-id="${e.ex}">${esc(ex?ex.n:e.ex)} ⓘ</button></h3><div class="small muted">${tg?`Ziel ${schemeTxt(tg)} · RIR ${tg.rir} · Pause ${restTxt(tg.rest)}`:"Freie Übung"}</div></div><button class="iconbtn" data-act="exMenu" data-ei="${ei}" aria-label="Optionen">⋯</button></div>
   ${L?`<div class="small muted">Letztes Mal (${dayLabel(L.date)}): <span class="num" style="color:var(--ink)">${setsTxt(L.sets)}</span></div>`:""}
   ${rc?`<div class="hint ${rc.kind==="up"||rc.kind==="reps"?"up":""}">${esc(rc.text)}</div>`:""}
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
@@ -1086,6 +1093,7 @@ function itemSheet(di,ii){
  const st=(k,l,txt)=>`<div class="row"><span class="grow">${l}</span><div class="stepper"><button data-act="step" data-k="${k}" data-n="-1" aria-label="${l} weniger">−</button><span class="v" id="v_${k}">${txt?txt(it[k]):it[k]}</span><button data-act="step" data-k="${k}" data-n="1" aria-label="${l} mehr">+</button></div></div>`;
  openSheet(`${sheetHd(esc(ex?ex.n:it.ex))}<div class="stack">
  <div class="small muted">${ex?PL.MUSN[ex.m]:""}${ex&&Object.keys(ex.s).length?" · Mitbelastung: "+Object.keys(ex.s).map(m=>PL.MUSN[m]).join(", "):""}</div>
+ ${ex?`<button class="card row" data-act="exInfoItem" data-id="${ex.id}" style="text-align:left;width:100%;color:inherit">${exThumb(ex)}<div class="grow"><b>Anleitung &amp; Animation</b><div class="small muted">Ausführung, häufige Fehler, Atmung</div></div>${svgI.chev}</button>`:""}
  ${it.pain?`<div class="banner warn"><div class="grow">Du hast hier Beschwerden gemeldet. Unten findest du gelenkschonendere Alternativen.</div><button class="btn sm" data-act="painOff">Erledigt</button></div>`:""}
  <div class="card stack">${st("sets","Sätze")}${st("repMin","Wdh. min")}${st("repMax","Wdh. max")}${st("rir","Ziel-RIR")}${st("rest","Pause",restTxt)}
   <label class="f">Arbeitsgewicht in kg (optional)<input type="number" inputmode="decimal" step="0.5" id="itKg" value="${it.kg??""}" placeholder="wird aus deinem Verlauf vorgeschlagen"></label></div>
@@ -1248,8 +1256,10 @@ function bodySvg(set,sec,cls){
 }
 const thumb=(ms,cls)=>`<div class="thumb ${cls||""}">${bodySvg(new Set(ms),null,"mini")}</div>`;
 const exFig=(ex,cls)=>ex&&window.Figure?Figure.svg(ex.id,1,new Set([ex.m]),new Set(Object.keys(ex.s||{})),cls||"exthumb"):eqSvg(mainEq(ex),"eqthumb");
-const exThumb=ex=>`<div class="thumb">${exFig(ex)}</div>`;
-const exMini=ex=>`<div class="thumb sm">${exFig(ex)}</div>`;
+/* tap=1: Vorschaubild öffnet die Anleitung mit Animation */
+const tapAttr=ex=>ex?` data-act="exInfo" data-id="${ex.id}" role="button" tabindex="0" aria-label="Anleitung: ${esc(ex.n)}"`:"";
+const exThumb=(ex,tap)=>`<div class="thumb${tap?" tap":""}"${tap?tapAttr(ex):""}>${exFig(ex)}</div>`;
+const exMini=(ex,tap)=>`<div class="thumb sm${tap?" tap":""}"${tap?tapAttr(ex):""}>${exFig(ex)}</div>`;
 
 /* ---------- 1 Startbildschirm ---------- */
 function vHome(){
@@ -1346,7 +1356,7 @@ function vDay(){
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
  ${UI.sortDay===di?sortList(di,its):`<div class="listhd"><div class="lbl grow">Übungen</div>${its.length>1?`<button class="btn sm ghost pill" data-act="sortOn" data-d="${di}">↕ Reihenfolge ändern</button>`:""}</div>
- <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
+ <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
  <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
  <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div>`}</div>`;
@@ -1385,7 +1395,55 @@ function endDrag(e){
 document.addEventListener("pointerup",endDrag);document.addEventListener("pointercancel",endDrag);
 
 /* ---------- 4 Übungsdetail ---------- */
+/* Häufige Fehler je Bewegungsmuster (angelehnt an gängige Trainer-Lehrbücher, z. B. NSCA/ACE) */
+const MISTAKES={
+ squat:["Knie fallen nach innen","Fersen heben ab, das Gewicht rutscht auf die Zehen","Unterer Rücken rundet sich am tiefsten Punkt"],
+ hinge:["Runder Rücken statt Beugung aus der Hüfte","Gewicht entfernt sich vom Körper","Knie zu stark gebeugt – es wird eine Kniebeuge"],
+ hpush:["Schultern rollen nach vorn, Schulterblätter lösen sich","Ellbogen auf 90° seitlich abgespreizt","Gewicht auf der Brust abfedern oder Po hebt ab"],
+ vpush:["Starkes Hohlkreuz beim Drücken","Gewicht landet vor statt über dem Kopf","Arme oben nicht ganz gestreckt"],
+ hpull:["Schwung aus dem Oberkörper","Schultern ziehen zu den Ohren","Nur aus den Armen ziehen, Schulterblätter bleiben still"],
+ vpull:["Weit nach hinten lehnen und mit Schwung ziehen","Schultern bleiben oben","Oben nicht ganz strecken"],
+ quadiso:["Gewicht fallen lassen statt kontrolliert absenken","Po hebt vom Sitz ab"],
+ hamiso:["Hüfte hebt vom Polster ab","Ruckartig ziehen, Gewicht schlägt zurück"],
+ glute:["Hohlkreuz statt Streckung aus der Hüfte","Oben nicht halten, Po nicht angespannt"],
+ chestiso:["Arme strecken sich, es wird ein Drücken","Zu tief in die Dehnung mit nach vorn rollenden Schultern"],
+ side:["Schwung aus dem Körper","Schultern ziehen hoch, der Nacken übernimmt","Deutlich über Schulterhöhe heben"],
+ rear:["Schulterblätter zusammenziehen statt Arme nach außen führen","Zu schweres Gewicht mit Schwung"],
+ bi:["Ellbogen wandern nach vorn","Schwung aus dem Rücken","Unten nicht ganz strecken"],
+ tri:["Ellbogen wandern nach außen oder vorn","Oberkörper drückt mit"],
+ calf:["Wippen ohne Dehnung unten","Oben nicht halten, zu kurze Bewegung"],
+ core:["Zug aus dem Nacken statt aus dem Bauch","Hohlkreuz, der Bauch wölbt sich nach außen"],
+ shrug:["Schultern kreisen","Arme beugen mit"],
+ adduct:["Gewicht zurückschnellen lassen","Oberkörper lehnt sich nach vorn"]
+};
+/* Hinweise, wenn die Seitenansicht die Bewegung nur vereinfacht zeigt */
+const FIG_NOTE={torso_m:"Die Grafik zeigt die Sitzposition von der Seite. Die eigentliche Drehung erfolgt um die Längsachse des Oberkörpers.",db_rear:"Die Grafik zeigt die Bewegung an der Maschine. Mit Kurzhanteln stehst du vorgebeugt, Rücken gerade, und führst die Arme seitlich nach außen.",cable_row1:"Die Grafik zeigt beidarmiges Rudern. Einarmig ziehst du eine Seite und hältst den Oberkörper ruhig, ohne zu verdrehen.",legpress_s:"Die Grafik zeigt eine 45°-Beinpresse. Die Ausführung ist an der horizontalen Presse gleich.",legpress_l:"Die Grafik zeigt eine 45°-Beinpresse. Die Ausführung ist liegend gleich.",legpress_1:"Die Grafik zeigt beide Beine. Bei der dualen Presse arbeitet jedes Bein einzeln.",vkr_raise:"Die Grafik zeigt das Beinheben im Hang. An der Beinhebestation stützt du dich mit den Unterarmen auf die Polster, der Rücken liegt an der Lehne."};
+const BREATH="Atmung: vor der Wiederholung einatmen und den Rumpf anspannen, in der anstrengenden Phase ausatmen. Bei sehr schweren Sätzen höchstens 1–2 Sekunden die Luft anhalten.";
 const CUES_ID={
+ legpress:["Rücken und Becken fest am Polster, Füße schulterbreit mittig auf der Platte","Nur so tief, dass das Becken nicht vom Polster abrollt","Knie folgen den Fußspitzen, oben nicht ganz durchstrecken"],
+ legpress_s:["Rücken und Becken fest am Polster, Füße schulterbreit mittig auf der Platte","Nur so tief, dass das Becken nicht vom Polster abrollt","Knie folgen den Fußspitzen, oben nicht ganz durchstrecken"],
+ legpress_l:["Rücken und Becken fest am Polster, Füße schulterbreit mittig auf der Platte","Nur so tief, dass das Becken nicht vom Polster abrollt","Knie folgen den Fußspitzen, oben nicht ganz durchstrecken"],
+ hack_squat:["Schultern unter die Polster, Rücken fest an der Lehne","Füße schulterbreit, Knie folgen den Zehen","Tief absenken, über die ganze Fußsohle hochdrücken, Knie nicht durchstrecken"],
+ pendulum:["Schultern unter die Polster, Rücken fest an der Lehne","Füße schulterbreit, Knie folgen den Zehen","Tief absenken, über die ganze Fußsohle hochdrücken, Knie nicht durchstrecken"],
+ bss:["Hinterer Fuß mit dem Spann auf der Bank, vorderer Fuß weit genug vorn","Senkrecht absenken, bis das vordere Knie etwa 90° gebeugt ist","Über die ganze vordere Fußsohle hochdrücken, Oberkörper leicht vorgeneigt"],
+ lunge:["Großer Schritt, Füße hüftbreit versetzt","Hinteres Knie Richtung Boden, vorderes Knie über dem Mittelfuß","Über die vordere Ferse hochdrücken, Rumpf aufrecht"],
+ deadlift:["Stange über dem Mittelfuß, Schienbeine nah an der Stange","Rücken neutral, Rumpf fest, Schultern leicht vor der Stange","Hüfte und Schultern steigen gleichzeitig, Stange am Körper entlang","Oben aufrecht stehen, nicht nach hinten überstrecken"],
+ kb_swing:["Hüfte nach hinten schieben, Rücken neutral, Kettlebell zwischen den Beinen","Hüfte explosiv nach vorn strecken, die Arme führen nur","Oben aufrecht mit festem Po und Bauch, Kettlebell bis etwa Brusthöhe"],
+ sl_rdl:["Standbein leicht gebeugt, Hüfte bleibt parallel zum Boden","Oberkörper und freies Bein bilden eine Linie","Absenken bis zur Dehnung, über die Hüfte aufrichten"],
+ bench:["Schulterblätter zusammen und nach unten, Kopf, Schultern, Po und beide Füße haben Kontakt","Stange kontrolliert zur unteren Brust, Ellbogen etwa 45–70° vom Körper","Senkrecht hochdrücken, Handgelenke über den Ellbogen"],
+ ohp:["Stand hüftbreit, Po und Bauch fest","Stange dicht vor dem Gesicht senkrecht nach oben","Oben den Kopf leicht nach vorn, Arme ganz strecken"],
+ pushup:["Hände etwas weiter als schulterbreit, Körper in einer Linie","Rumpf und Po fest, Ellbogen etwa 45° vom Körper","Brust bis knapp über den Boden, ganz hochdrücken"],
+ diamond:["Hände eng unter der Brust","Ellbogen eng am Körper nach hinten führen","Körper bleibt in einer Linie"],
+ dips:["Schultern nach unten, Oberkörper leicht vorgeneigt","Absenken, bis die Oberarme etwa parallel zum Boden sind","Hochdrücken, bis die Arme gestreckt sind, Schultern weg von den Ohren"],
+ dip_assist:["Knie auf das Polster, Schultern nach unten","Absenken, bis die Oberarme etwa parallel zum Boden sind","Hochdrücken, bis die Arme gestreckt sind. Weniger Gegengewicht = schwerer"],
+ pike:["Hüfte hoch, Körper als umgedrehtes V","Kopf zwischen den Händen Richtung Boden senken","Ellbogen nach hinten, kraftvoll zurückdrücken"],
+ pullup:["Schultern zuerst nach unten ziehen","Ohne Schwung ziehen, bis das Kinn über der Stange ist","Kontrolliert bis zur vollen Streckung absenken"],
+ pullup_assist:["Knie auf das Polster, Schultern zuerst nach unten ziehen","Ziehen, bis das Kinn über der Stange ist","Kontrolliert strecken. Weniger Gegengewicht = schwerer"],
+ hlr:["Aus dem ruhigen Hang starten, Schultern aktiv","Beine heben und das Becken einrollen","Langsam absenken, ohne zu schwingen"],
+ cable_crunch:["Kniend, Seil neben dem Kopf, Hüfte bleibt fest","Oberkörper einrollen, Ellbogen Richtung Knie","Langsam zurück, Spannung halten"],
+ crunch:["Füße aufgestellt, unterer Rücken am Boden","Schulterblätter abheben, Rippen Richtung Becken","Nacken entspannt, Blick schräg nach oben"],
+ deadbug:["Rücken flach am Boden, Arme senkrecht, Beine im 90°-Winkel","Gegengleich Arm und Bein langsam strecken","Unterer Rücken bleibt am Boden, dann Seite wechseln"],
+ glute_bridge:["Füße hüftbreit nah am Po aufgestellt","Hüfte über die Fersen hochdrücken, bis Knie, Hüfte und Schultern eine Linie bilden","Oben Po anspannen, kein Hohlkreuz"],
  abduct:["Rücken an die Lehne, Polster außen an den Knien","Beine kontrolliert nach außen drücken","Kurz halten, langsam zurück, Gewicht nicht absetzen"],
  adduct_m:["Rücken an die Lehne, Polster innen an den Knien","Beine kontrolliert zusammendrücken","Langsam öffnen bis zur Dehnung, Gewicht nicht absetzen"],
  backext:["Hüfte knapp vor dem Polster, Beine fixiert","Rücken neutral nach unten senken","Mit Po und Beinbeugern bis in die Linie aufrichten, nicht überstrecken"],
@@ -1434,20 +1492,32 @@ const CUES={
  tri:["Oberarme fixieren","Am Ende vollständig strecken","Langsam zurück in die Beugung"],
  calf:["Ganz tief in die Dehnung","Oben auf den Fußballen kurz halten","Kein Wippen"],
  core:["Bauch einziehen, Rücken am Boden bzw. neutral","Langsam und kontrolliert","Ausatmen in der Anspannung"],
+ adduct:["Rücken an die Lehne, Polster innen an den Knien","Beine kontrolliert zusammendrücken","Langsam öffnen bis zur Dehnung, Gewicht nicht absetzen"],
  shrug:["Arme gestreckt, Gewicht nah am Körper","Schultern gerade nach oben zu den Ohren ziehen","Oben kurz halten, langsam absenken, nicht kreisen"]
 };
 function exInfoSheet(exId,tab){
- const ex=EXMAP[exId];if(!ex)return;const t=tab||"ov";SH=Object.assign(SH||{},{exInfo:exId,exTab:t});
- const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const best=bestSet(exId);const hist=exHistory(exId).slice(0,5);
+ const ex=EXMAP[exId];if(!ex)return;let t=tab||"ov";if(t==="how")t="ov";SH=Object.assign(SH||{},{exInfo:exId,exTab:t});
+ const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const best=bestSet(exId);const hist=exHistory(exId).slice(0,6);
+ const slow=!!SH.slow,mode=SH.figMode||"play";
  let body="";
- if(t==="ov")body=`<div class="card exanim" id="exAnim"></div><div class="small muted" style="text-align:center"><span class="legend red"></span> Zielmuskel &nbsp; <span class="legend sec"></span> hilft mit</div>
-  <div class="small"><b>Primär:</b> ${PL.MUSN[ex.m]}${sec.size?` &nbsp; <b>Sekundär:</b> ${[...sec].map(m=>PL.MUSN[m]).join(", ")}`:""}</div>
-  ${best?`<div class="card row"><div class="grow"><div class="lbl">Deine Bestleistung</div><div class="num" style="font-size:24px">${fmt(best.kg,1)} kg × ${best.reps} Wdh.</div></div><span class="small muted">${new Date(best.date+"T12:00:00").toLocaleDateString("de-DE")}</span></div>`:`<div class="empty small">Noch keine Daten für diese Übung.</div>`}
-  ${hist.length?`<div class="lbl">Letzte Einheiten</div><div class="card" style="padding:4px 14px">${hist.map(h=>`<div class="kv"><span class="muted">${dayLabel(h.date)}</span><span class="num">${setsTxt(h.sets)}</span></div>`).join("")}</div>`:""}`;
- if(t==="how")body=`<div class="card stack"><ol class="cues">${(CUES_ID[ex.id]||CUES[ex.pat]||[]).map(c=>`<li>${c}</li>`).join("")}</ol></div><div class="small muted">Tempo: etwa 2 Sekunden absenken, kontrolliert hoch. Den Satz beenden, wenn noch so viele saubere Wiederholungen gehen würden, wie dein RIR-Ziel sagt.</div>`;
+ if(t==="ov")body=`<div class="card exanim" id="exAnim"></div>
+  <div class="animctl">${[["play","▶ Abspielen"],["slow","🐢 Zeitlupe"],["start","Start"],["end","Ende"]].map(([k,l])=>`<button class="chip ${(k==="slow"?slow&&mode==="play":k===mode&&!(k==="play"&&slow))?"on":""}" data-act="figMode" data-v="${k}">${l}</button>`).join("")}</div>
+  <div class="small muted" style="text-align:center"><span class="legend red"></span> Zielmuskel: ${PL.MUSN[ex.m]}${sec.size?` &nbsp; <span class="legend sec"></span> hilft mit: ${[...sec].map(m=>PL.MUSN[m]).join(", ")}`:""}</div>
+  ${FIG_NOTE[ex.id]?`<div class="hint">${esc(FIG_NOTE[ex.id])}</div>`:""}
+  <div class="card howto"><div class="lbl acc">So geht's</div><ol class="cues">${(CUES_ID[ex.id]||CUES[ex.pat]||[]).map(c=>`<li>${c}</li>`).join("")}</ol></div>
+  ${MISTAKES[ex.pat]?`<div class="card howto"><div class="lbl" style="color:var(--warn)">Häufige Fehler</div><ul class="cues err">${MISTAKES[ex.pat].map(c=>`<li>${c}</li>`).join("")}</ul></div>`:""}
+  <div class="small muted">${BREATH} Tempo: etwa 2 Sekunden absenken, kontrolliert hoch. Den Satz beenden, wenn noch so viele saubere Wiederholungen gehen würden, wie dein RIR-Ziel sagt.</div>`;
  if(t==="mus")body=`<div class="card" style="display:flex;justify-content:center;padding:16px">${bodySvg(prim,sec,"big")}</div><div class="small"><span class="legend red"></span> Primär: ${PL.MUSN[ex.m]} ${sec.size?`<br><span class="legend sec"></span> Sekundär: ${[...sec].map(m=>PL.MUSN[m]).join(", ")}`:""}</div>`;
- openSheet(`${sheetHd(esc(ex.n))}<div class="stack">${segBar(t,[["ov","Übersicht"],["how","Ausführung"],["mus","Muskeln"]],"exTab")}${body}</div>`,SH);
- if(t==="ov"&&window.Figure)Figure.animate($("#exAnim"),exId,prim,sec);else if(window.Figure)Figure.stop();
+ if(t==="hist")body=`${best?`<div class="card row"><div class="grow"><div class="lbl">Deine Bestleistung</div><div class="num" style="font-size:24px">${fmt(best.kg,1)} kg × ${best.reps} Wdh.</div><div class="small muted">1RM ca. ${fmt(best.v,1)} kg</div></div><span class="small muted">${new Date(best.date+"T12:00:00").toLocaleDateString("de-DE")}</span></div>`:`<div class="empty small">Noch keine Daten für diese Übung.</div>`}
+  ${hist.length?`<div class="lbl">Letzte Einheiten</div><div class="card" style="padding:4px 14px">${hist.map(h=>`<div class="kv"><span class="muted">${dayLabel(h.date)}</span><span class="num">${setsTxt(h.sets)}</span></div>`).join("")}</div>`:""}`;
+ const back=SH.backItem&&M.plan&&M.plan.days[SH.backItem[0]]?`<button class="btn ghost block" data-act="item" data-d="${SH.backItem[0]}" data-i="${SH.backItem[1]}">‹ Zurück zur Übung im Plan</button>`:"";
+ openSheet(`${sheetHd(esc(ex.n))}<div class="stack">${segBar(t,[["ov","Anleitung"],["mus","Muskeln"],["hist","Verlauf"]],"exTab")}${body}${back}</div>`,SH);
+ if(t==="ov")drawFig();else if(window.Figure)Figure.stop();
+}
+function drawFig(){
+ const el=$("#exAnim"),ex=SH&&EXMAP[SH.exInfo];if(!el||!ex||!window.Figure)return;const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const mode=SH.figMode||"play";
+ if(mode==="start"||mode==="end"){Figure.stop();el.innerHTML=Figure.svg(ex.id,mode==="end"?1:0,prim,sec)}
+ else Figure.animate(el,ex.id,prim,sec,{slow:!!SH.slow});
 }
 
 /* ---------- 5 Satz-Tracking ---------- */
@@ -1702,7 +1772,9 @@ document.addEventListener("click",e=>{
  case"moveDay":moveSheet(+d.d);break;
  case"movePerm":SH.perm=d.v==="1";moveSheet(SH.move);break;
  case"moveTo":moveTo(+d.v);break;
- case"exInfo":exInfoSheet(d.id);break;
+ case"exInfo":if(SH&&SH.exInfo!==d.id){SH.slow=false;SH.figMode="play"}exInfoSheet(d.id);break;
+ case"exInfoItem":{const bi=SH&&SH.di!=null?[SH.di,SH.ii]:null;SH={backItem:bi};exInfoSheet(d.id);break}
+ case"figMode":{if(d.v==="slow"){SH.slow=!(SH.slow&&SH.figMode==="play");SH.figMode="play"}else{SH.figMode=d.v;if(d.v==="play")SH.slow=false}document.querySelectorAll(".animctl .chip").forEach(c=>{const k=c.dataset.v;c.classList.toggle("on",k==="slow"?SH.slow&&SH.figMode==="play":k===SH.figMode&&!(k==="play"&&SH.slow))});drawFig();break}
  case"exTab":exInfoSheet(SH.exInfo,d.t);break;
  case"goLib":UI.planTab="lib";if(location.hash==="#plan")render();else location.hash="#plan";break;
  case"goBody":UI.statTab="body";if(location.hash==="#statistik")render();else location.hash="#statistik";break;
