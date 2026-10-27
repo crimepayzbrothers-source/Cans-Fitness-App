@@ -1,6 +1,6 @@
 // Cans Fitness App – Offline-Cache. Bei Änderungen an der App die Versionsnummer erhöhen.
-const CACHE = "et-v6";
-const SHELL = ["./", "./index.html", "./planner.js", "./ai.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const CACHE = "et-v8";
+const SHELL = ["./", "./index.html", "./planner.js?v=8", "./ai.js?v=8", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -15,7 +15,7 @@ self.addEventListener("fetch", e => {
   if (u.hostname.endsWith("openfoodfacts.org")) return; // immer live abfragen
   if (u.origin === location.origin) {
     // eigene Dateien: erst Netz (damit Updates ankommen), sonst Cache
-    e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return r; })
+    e.respondWith(fetch(req, {cache: "no-cache"}).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return r; })
       .catch(() => caches.match(req).then(r => r || caches.match("./index.html"))));
     return;
   }

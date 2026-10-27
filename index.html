@@ -206,6 +206,8 @@ details.more summary::-webkit-details-marker{display:none}
 .airow{display:flex;flex-direction:column;gap:8px;padding:12px}
 .airow input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
 .airow.off{opacity:.5}
+a.btn{text-decoration:none;color:var(--ink)}
+a.btn.primary{color:var(--on-accent)}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
 .seg button{font-size:14px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
@@ -244,8 +246,8 @@ details.more summary::-webkit-details-marker{display:none}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js"></script>
-<script src="ai.js"></script>
+<script src="planner.js?v=8"></script>
+<script src="ai.js?v=8"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -657,8 +659,22 @@ $("#labelIn").addEventListener("change",async e=>{const f=e.target.files[0];e.ta
 /* ---------- KI-Foto-Analyse ---------- */
 function aiCfg(){try{return JSON.parse(localStorage.getItem("et-ai")||"null")}catch(e){return null}}
 function setAiCfg(c){try{if(c)localStorage.setItem("et-ai",JSON.stringify(c));else localStorage.removeItem("et-ai")}catch(e){}}
+function bridgeView(){
+ return`<div class="stack"><div class="small muted">Ohne API-Schlüssel: Die Analyse läuft in deiner ChatGPT-App, die App wertet nur die Antwort aus.</div>
+ <div class="card stack"><div class="row"><span class="tag acc">1</span><b class="grow">Auftrag kopieren</b></div>
+  <label class="f">Hinweise (optional)<input type="text" id="aiHint" value="${esc(SH.aiHint||"")}" placeholder="z. B. 200 g Reis, in Olivenöl gebraten"></label>
+  <button class="btn primary block" data-act="brCopy">Auftrag kopieren</button><div id="brStat"></div></div>
+ <div class="card stack"><div class="row"><span class="tag acc">2</span><b class="grow">In ChatGPT senden</b></div>
+  <div class="small">ChatGPT öffnen, mit <b>+</b> dein Essensfoto anhängen, den kopierten Auftrag einfügen und senden. Bei der Antwort auf das <b>Kopieren-Symbol</b> tippen.</div>
+  <a class="btn block" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT öffnen ↗</a></div>
+ <div class="card stack"><div class="row"><span class="tag acc">3</span><b class="grow">Antwort einfügen</b></div>
+  <textarea id="brIn" placeholder="Antwort von ChatGPT hier einfügen"></textarea>
+  <button class="btn primary block" data-act="brParse">Auswerten</button></div>
+ <button class="btn ghost block" data-act="brBack">Zurück</button></div>`;
+}
 function photoTab(){
  const cfg=aiCfg();
+ if(SH.bridge&&!(SH.ai&&SH.ai.result))return bridgeView();
  if(!cfg||!cfg.key||SH.aiSetup){
   const sel=SH.aiProv||(cfg&&cfg.provider)||"gemini",PV=AI.PROVIDERS[sel],same=cfg&&cfg.provider===sel;
   return`<div class="stack"><div class="small muted">Fotografiere dein Essen. Die KI erkennt die Lebensmittel, schätzt die Mengen und berechnet die Nährwerte. Dafür brauchst du einen eigenen API-Schlüssel bei einem Anbieter.</div>
@@ -668,11 +684,12 @@ function photoTab(){
   <details class="more"><summary>Erweitert: Modell</summary><label class="f">Modellname<input type="text" id="aiModel" value="${esc(same&&cfg.model?cfg.model:PV.model)}"></label><div class="small muted">Standard: ${PV.model}. Nur ändern, wenn der Anbieter das Modell umbenannt hat oder du ein genaueres nutzen willst.</div></details>
   <button class="btn primary block" data-act="aiSave">Speichern und testen</button><div id="aiStat"></div>
   ${cfg&&cfg.key?`<div class="row"><button class="btn ghost grow" data-act="aiBack">Abbrechen</button><button class="btn danger grow" data-act="aiDel">Schlüssel löschen</button></div>`:""}
-  <div class="small muted">Der Schlüssel bleibt nur auf diesem Gerät. Er steht weder in der Sicherung noch auf GitHub.</div></div>`;
+  <div class="small muted">Der Schlüssel bleibt nur auf diesem Gerät. Er steht weder in der Sicherung noch auf GitHub.</div>
+  <div class="card row"><div class="grow"><b>Ohne API-Schlüssel</b><div class="small muted">Über deine ChatGPT-App, kostenlos mit deinem Konto.</div></div><button class="btn sm" data-act="aiBridge">Nutzen</button></div></div>`;
  }
  if(SH.ai&&SH.ai.result){
   const R=SH.ai.result;
-  return`<div class="stack"><img class="aiimg" src="${SH.ai.img}" alt="Dein Foto">
+  return`<div class="stack">${SH.ai.img?`<img class="aiimg" src="${SH.ai.img}" alt="Dein Foto">`:""}
   ${R.notes?`<div class="hint">${esc(R.notes)}</div>`:""}
   ${R.items.length?R.items.map((it,i)=>`<div class="card airow ${it.on?"":"off"}" data-i="${i}">
    <label class="row"><input type="checkbox" data-ai="on" ${it.on?"checked":""} aria-label="${esc(it.name)} eintragen"><b class="grow">${esc(it.name)}</b><span class="tag ${it.conf==="niedrig"?"warn":""}">${it.conf==="hoch"?"sicher":it.conf==="niedrig"?"unsicher":"geschätzt"}</span></label>
@@ -687,7 +704,8 @@ function photoTab(){
   <div class="row"><button class="btn primary" data-act="aiCam">Kamera</button><button class="btn ghost" data-act="aiGal">Aus Galerie</button></div></div>
  <label class="f">Hinweise für die KI (optional)<input type="text" id="aiHint" value="${esc(SH.aiHint||"")}" placeholder="z. B. 200 g Reis, in Olivenöl gebraten"></label>
  <div id="aiStat"></div>
- <div class="small muted">Analyse mit ${AI.PROVIDERS[cfg.provider].name}. <button class="linkbtn" data-act="aiSetup">Anbieter ändern</button></div></div>`;
+ <div class="small muted">Analyse mit ${AI.PROVIDERS[cfg.provider].name}. <button class="linkbtn" data-act="aiSetup">Anbieter ändern</button></div>
+ <div class="card row"><div class="grow"><b>Anbieter überlastet?</b><div class="small muted">Analysiere stattdessen über deine ChatGPT-App.</div></div><button class="btn sm" data-act="aiBridge">ChatGPT-App</button></div></div>`;
 }
 let aiTick=null;
 function aiTimer(label){clearInterval(aiTick);const t0=Date.now();const upd=()=>{const el=$("#aiSec");if(!el){clearInterval(aiTick);return}el.textContent=Math.round((Date.now()-t0)/1000)+" s"};aiTick=setInterval(upd,1000);return`${label} <span id="aiSec" class="num">0 s</span>`}
@@ -866,6 +884,14 @@ document.addEventListener("click",e=>{
  case"aiCam":$("#aiCamIn").click();break;
  case"aiGal":$("#aiGalIn").click();break;
  case"aiRetry":SH.ai=null;renderTab();break;
+ case"aiBridge":SH.bridge=true;SH.ai=null;SH.aiSetup=false;renderTab();break;
+ case"brBack":SH.bridge=false;renderTab();break;
+ case"brCopy":{const h=$("#aiHint");SH.aiHint=h?h.value.trim():"";const txt=AI.prompt(SH.aiHint);const st=$("#brStat");
+  const fallback=()=>{if(st){st.innerHTML=`<div class="small muted">Kopieren hat nicht geklappt. Text markieren und kopieren:</div><textarea readonly id="brTxt" style="min-height:120px">${esc(txt)}</textarea>`;const t=$("#brTxt");try{t.focus();t.select()}catch(e){}}};
+  try{navigator.clipboard.writeText(txt).then(()=>{if(st)st.innerHTML='<div class="status">Kopiert. Jetzt ChatGPT öffnen.</div>'},fallback)}catch(e){fallback()}break}
+ case"brParse":{const t=(($("#brIn")||{}).value||"").trim();if(!t){toast("Bitte die Antwort von ChatGPT einfügen.");break}
+  try{const r=AI.normalize(AI.extractJSON(t));if(!r.items.length){toast("In der Antwort wurden keine Lebensmittel gefunden.");break}r.items.forEach(it=>it.on=true);SH.ai={result:r,img:null};renderTab()}
+  catch(e){toast("Die Antwort hatte nicht das erwartete Format. Bitte die komplette Antwort kopieren.")}break}
  case"aiSetup":SH.aiSetup=true;SH.ai=null;renderTab();break;
  case"aiBack":SH.aiSetup=false;SH.aiKeyDraft="";renderTab();break;
  case"aiProv":{const k=$("#aiKey");SH.aiKeyDraft=k?k.value:"";SH.aiProv=d.v;renderTab();break}
