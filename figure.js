@@ -97,24 +97,27 @@ function limb(P0, P1, w0, w1, far) {
 }
 const headC = (p, r) => `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${r + 1}" fill="${C.outline}"/><circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${r}" fill="url(#gh${G})"/>`;
 const shadow = (x0, x1) => `<ellipse cx="${X((x0 + x1) / 2)}" cy="${Y(6)}" rx="${((x1 - x0) / 2 + 10).toFixed(1)}" ry="4.5" fill="url(#gs${G})"/>`;
-const line = (a, b, w, c, extra) => { const base = `<line x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}" stroke="${c || C.frame}" stroke-width="${w || 3}" stroke-linecap="round" ${extra || ""}/>`;
+/* Aufnahmemodus für die 3D-Ansicht: statt SVG werden Geräteteile als Grundformen gesammelt */
+let REC = null;
+const R = o => { REC.push(o); return ""; };
+const line = (a, b, w, c, extra) => { if (REC) return R({k: "line", a: a.slice(), b: b.slice(), w: w || 3, c: c || C.frame}); const base = `<line x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}" stroke="${c || C.frame}" stroke-width="${w || 3}" stroke-linecap="round" ${extra || ""}/>`;
   // Gerätegestell mit Metallglanz
   return (!c || c === C.frame) && (w || 3) >= 3 ? base + `<line x1="${X(a[0])}" y1="${Y(a[1])}" x2="${X(b[0])}" y2="${Y(b[1])}" stroke="${C.metal}" stroke-opacity=".45" stroke-width="${((w || 3) * .35).toFixed(1)}" stroke-linecap="round"/>` : base; };
-const rect = (x, y, w, h, rot, cx, cy) => `<rect x="${X(x)}" y="${Y(y + h)}" width="${X(w)}" height="${X(h)}" rx="3" fill="url(#gp${G})" stroke="${C.frame}" stroke-width="1.5" ${rot ? `transform="rotate(${-rot} ${X(cx)} ${Y(cy)})"` : ""}/>`;
-const circ = (p, r, fill, stroke) => `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${r}" fill="${fill || `url(#gm${G})`}" stroke="${stroke || C.frame}" stroke-width="1.5"/>`;
-const ground = () => line([10, 6], [190, 6], 2, "#2A3A5C");
+const rect = (x, y, w, h, rot, cx, cy) => REC ? R({k: "rect", x, y, w, h, rot: rot || 0, cx, cy}) : `<rect x="${X(x)}" y="${Y(y + h)}" width="${X(w)}" height="${X(h)}" rx="3" fill="url(#gp${G})" stroke="${C.frame}" stroke-width="1.5" ${rot ? `transform="rotate(${-rot} ${X(cx)} ${Y(cy)})"` : ""}/>`;
+const circ = (p, r, fill, stroke) => REC ? R({k: "circ", p: p.slice(), r, fill: fill || ""}) : `<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="${r}" fill="${fill || `url(#gm${G})`}" stroke="${stroke || C.frame}" stroke-width="1.5"/>`;
+const ground = () => REC ? "" : line([10, 6], [190, 6], 2, "#2A3A5C");
 /* Gewichte in der Hand liegen in der Seitenansicht vor dem Körper: sie kommen in eine eigene, zuletzt gezeichnete Ebene */
 let FRONT = "";
 const front1 = h => { FRONT += `<g opacity=".92">${h}</g>`; return ""; };
-const barbell = p => front1(circ(p, 13) + circ(p, 3, "#2A3A5C"));
-const dumbbell = p => front1(circ(p, 6.5) + line(add(p, 0, -1), add(p, 0, 1), 3, "#2A3A5C"));
-const kettle = p => front1(`<path d="M${X(p[0] - 7)} ${Y(p[1] - 4)} a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M${X(p[0] - 4)} ${Y(p[1] + 1)} q4 -9 8 0" fill="url(#gm${G})" stroke="${C.frame}" stroke-width="1.5"/>`);
-const handle = p => circ(p, 3.5, "#2A3A5C");
-const cable = (p, anchor) => line(p, anchor, 1.3, C.cable) + circ(anchor, 4, "#2A3A5C");
-const roller = p => circ(p, 5.5, `url(#gp${G})`);
+const barbell = p => REC ? R({k: "bb", p: p.slice()}) : front1(circ(p, 13) + circ(p, 3, "#2A3A5C"));
+const dumbbell = p => REC ? R({k: "db", p: p.slice()}) : front1(circ(p, 6.5) + line(add(p, 0, -1), add(p, 0, 1), 3, "#2A3A5C"));
+const kettle = p => REC ? R({k: "kb", p: p.slice()}) : front1(`<path d="M${X(p[0] - 7)} ${Y(p[1] - 4)} a7 7 0 1 0 14 0 a7 7 0 1 0 -14 0 M${X(p[0] - 4)} ${Y(p[1] + 1)} q4 -9 8 0" fill="url(#gm${G})" stroke="${C.frame}" stroke-width="1.5"/>`);
+const handle = p => REC ? R({k: "handle", p: p.slice()}) : circ(p, 3.5, "#2A3A5C");
+const cable = (p, anchor) => REC ? R({k: "cable", a: p.slice(), b: anchor.slice()}) : line(p, anchor, 1.3, C.cable) + circ(anchor, 4, "#2A3A5C");
+const roller = p => REC ? R({k: "roller", p: p.slice()}) : circ(p, 5.5, `url(#gp${G})`);
 const load = (o, J) => o.load === "bb" ? barbell(J.W) : o.load === "db" ? dumbbell(J.W) : o.load === "kb" ? kettle(J.W) : o.load === "handle" ? handle(J.W) : "";
 const seat = (x, y, w) => rect(x, y, w, 7) + line([x + w / 2, y], [x + w / 2, 6], 3);
-const backrest = (H, a, len) => { const p0 = add(H, a + 180, -2), p1 = add(H, a, len || 52), off = add([0, 0], a - 90, 7); return line([p0[0] + off[0], p0[1] + off[1]], [p1[0] + off[0], p1[1] + off[1]], 9, C.frame) + line([p0[0] + off[0], p0[1] + off[1]], [p1[0] + off[0], p1[1] + off[1]], 7, "#25365E"); };
+const backrest = (H, a, len) => { const p0 = add(H, a + 180, -2), p1 = add(H, a, len || 52), off = add([0, 0], a - 90, 7); if (REC) return R({k: "pad", a: [p0[0] + off[0], p0[1] + off[1]], b: [p1[0] + off[0], p1[1] + off[1]], w: 8, off: [off[0] / 7, off[1] / 7]}); return line([p0[0] + off[0], p0[1] + off[1]], [p1[0] + off[0], p1[1] + off[1]], 9, C.frame) + line([p0[0] + off[0], p0[1] + off[1]], [p1[0] + off[0], p1[1] + off[1]], 7, "#25365E"); };
 const bench = (x0, x1, y) => rect(x0, y - 7, x1 - x0, 7) + line([x0 + 8, y - 7], [x0 + 8, 6], 3) + line([x1 - 8, y - 7], [x1 - 8, 6], 3);
 const tower = (x, top) => line([x, 6], [x, top], 4) + line([x - 10, 6], [x + 10, 6], 4);
 
@@ -334,6 +337,15 @@ function animate(el, exId, prim, sec, opt) {
 function ease(x) { return x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; }
 function stop() { if (animTimer && root.cancelAnimationFrame) root.cancelAnimationFrame(animTimer); animTimer = null; animState = null; }
 
-const API = {svg, animate, stop, MAP, T, solve};
+/* Daten für die 3D-Ansicht: Gelenke der Pose und Geräte als Grundformen */
+function scene(exId, t) {
+  const m = MAP[exId] || ["curl", {}];
+  if (m[0][0] === "#") return {kind: "front", type: m[0].slice(1), t};
+  const tp = T[m[0]], o = m[1] || {}, J = solve(interp(tp.a, tp.b, t));
+  REC = []; G = "r";
+  try { tp.props(J, o); } finally { var prims = REC; REC = null; }
+  return {kind: "side", J, f: tp.front || 1, o, prims, tpl: m[0]};
+}
+const API = {svg, animate, stop, MAP, T, solve, scene, L, C, MUSCLE};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Figure = API;
 })(typeof window !== "undefined" ? window : this);
