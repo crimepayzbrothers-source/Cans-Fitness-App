@@ -1,6 +1,8 @@
 const P = require("./planner.js");
 const ALL = ["rack","db","bench","incline","cable","latpull","cablerow","rowmachine","legpress","hack","smith","legext","legcurl","chestpress","pecdeck","shoulderpress","pullup","dip","hipthrust","abduct","calf","ez","kb"];
 const HOME = ["db","bench","incline","pullup"];
+// Maschinenstudio nur mit den neu eingebauten Geräten (Oktober 2026)
+const MACH = ["legpress_s","beltsquat","vsquat","legcurl_st","calfpress","chestlying","declinechest","pecbent","lateralm2","latm","highrow","lowrow","tbarm","shrugm","abslying","cablehi","cablelo","dipmach","revfly","abductm","adductm","deadliftm"];
 const profiles = [
   ["Einsteiger, 2 Tage, 60 Min, Studio", {goal:"muskel",level:"beg",days:2,minutes:60,equipment:ALL}],
   ["Einsteiger, 3 Tage, 45 Min, Studio", {goal:"muskel",level:"beg",days:3,minutes:45,equipment:ALL}],
@@ -15,7 +17,11 @@ const profiles = [
   ["Knie + unterer Rücken, 3 Tage", {goal:"muskel",level:"int",days:3,minutes:60,equipment:ALL,injuries:["knie","ruecken"]}],
   ["Fettabbau, Fortgeschritten, 4 Tage, 45 Min", {goal:"fett",level:"int",days:4,minutes:45,equipment:ALL}],
   ["Allgemeine Fitness, Einsteiger, 2 Tage, 45 Min", {goal:"fit",level:"beg",days:2,minutes:45,equipment:ALL}],
-  ["Nur Körpergewicht", {goal:"fit",level:"beg",days:3,minutes:45,equipment:[]}]
+  ["Nur Körpergewicht", {goal:"fit",level:"beg",days:3,minutes:45,equipment:[]}],
+  ["Neue Maschinen, 4 Tage, 60 Min", {goal:"muskel",level:"int",days:4,minutes:60,equipment:MACH}],
+  ["Neue Maschinen, Einsteiger, 3 Tage", {goal:"muskel",level:"beg",days:3,minutes:60,equipment:MACH}],
+  ["Nur hoher + tiefer Kabelzug + KH", {goal:"muskel",level:"int",days:3,minutes:60,equipment:["cablehi","cablelo","db","bench"]}],
+  ["Power Tower + Landmine + Rack", {goal:"kraft",level:"int",days:3,minutes:75,equipment:["rack","bench","landmine","vkr"]}]
 ];
 const verbose = process.argv.includes("-v");
 let fails = 0;
@@ -69,5 +75,8 @@ const before = plan.days[0].items.map(i => i.sets).join(",");
 const log = P.adapt(plan, 0, w, "leicht", () => 40, "2026-W44");
 console.log("Adapt leicht:", before, "→", plan.days[0].items.map(i => i.sets).join(","), log.length);
 const log2 = P.adapt(plan, 0, w, "leicht", () => 40, "2026-W44"); console.log("gleiche Woche nochmal:", log2.length);
+// Geräte-Logik: voller Kabelzug ersetzt hohen und tiefen, einzelner Turm nicht umgekehrt
+const okImp = P.hasNeed("cablehi", new Set(["cable2"])) && P.hasNeed("cablelo", new Set(["cableadj"])) && !P.hasNeed("cable", new Set(["cablehi"]));
+console.log("Kabel-Logik:", okImp ? "ok" : "FEHLER"); if (!okImp) fails++;
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 

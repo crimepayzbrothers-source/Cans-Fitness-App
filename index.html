@@ -407,9 +407,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=14"></script>
-<script src="ai.js?v=14"></script>
-<script src="figure.js?v=14"></script>
+<script src="planner.js?v=15"></script>
+<script src="ai.js?v=15"></script>
+<script src="figure.js?v=15"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -427,43 +427,74 @@ function shiftDate(d,n){const dt=new Date(d+"T12:00:00");dt.setDate(dt.getDate()
 
 /* ---------- equipment with drawings ---------- */
 const EQ=[
- {id:"rack",n:"Langhantel & Rack",s:'<path d="M18 6v38M46 6v38M12 44h12M40 44h12M4 20h56M18 23h4M46 23h-4"/><rect x="6" y="12" width="6" height="16" rx="1"/><rect x="52" y="12" width="6" height="16" rx="1"/>'},
- {id:"db",n:"Kurzhanteln",s:'<path d="M24 24h16"/><rect x="15" y="15" width="9" height="18" rx="2"/><rect x="40" y="15" width="9" height="18" rx="2"/><rect x="10" y="19" width="5" height="10" rx="1"/><rect x="49" y="19" width="5" height="10" rx="1"/>'},
- {id:"bench",n:"Flachbank",s:'<rect x="8" y="17" width="48" height="8" rx="3"/><path d="M16 25v15M48 25v15M11 41h10M43 41h10"/>'},
- {id:"incline",n:"Schrägbank (verstellbar)",s:'<path d="M14 34 L42 9 L47 14 L19 39 Z"/><path d="M19 34h22M24 38v6M44 34v10M16 44h34"/>'},
- {id:"cable",n:"Kabelzug",s:'<rect x="22" y="4" width="20" height="40" rx="2"/><circle cx="32" cy="10" r="3"/><path d="M32 13v14M25 29h14"/><rect x="27" y="33" width="10" height="8"/>'},
- {id:"latpull",n:"Latzug",s:'<path d="M18 44V6h28v38M8 18h48M32 6v12M24 36h16M32 36v8M22 29h20"/>'},
- {id:"cablerow",n:"Rudern sitzend (Kabel)",s:'<path d="M54 4v40M6 44h52M8 34h22M18 34v10M44 24v16M54 10 L33 25M31 21v8"/>'},
- {id:"rowmachine",n:"T-Bar / Rudermaschine",s:'<path d="M14 32 L30 18M8 44h48M20 44V30M34 26h16M42 26v-9M50 26v18"/>'},
- {id:"legpress",n:"Beinpresse",s:'<path d="M6 44h52M10 40 L46 10M8 28 L18 40h10M41 5 L54 16 L50 21 L37 10 Z"/>'},
- {id:"hack",n:"Hackenschmidt",s:'<path d="M8 44h48M14 44 L30 5M24 9 L36 13 L26 40 L15 36 Z M38 40h16"/>'},
- {id:"smith",n:"Multipresse (Smith)",s:'<path d="M16 4v40M48 4v40M10 44h44M8 22h48"/><rect x="9" y="15" width="5" height="14" rx="1"/><rect x="50" y="15" width="5" height="14" rx="1"/>'},
- {id:"legext",n:"Beinstrecker",s:'<path d="M14 30h20M14 30V10M34 30 L42 37M10 44h40M22 30v14"/><circle cx="44" cy="39" r="4"/>'},
- {id:"legcurl",n:"Beinbeuger liegend",s:'<path d="M8 25h40M14 25v15M40 25v15M8 40h40M48 25 L53 20"/><circle cx="55" cy="18" r="4"/>'},
- {id:"chestpress",n:"Brustpresse",s:'<path d="M20 6v30M20 34h14M27 34v10M18 44h18M20 18h22M42 13v10"/>'},
- {id:"pecdeck",n:"Butterfly / Reverse Fly",s:'<path d="M32 8v28M26 34h12M32 36v8M22 44h20M32 14 Q14 14 14 30M32 14 Q50 14 50 30"/>'},
- {id:"shoulderpress",n:"Schulterpresse",s:'<path d="M24 8v28M24 34h14M30 34v10M20 44h20M16 12h32M16 6v10M48 6v10"/>'},
- {id:"pullup",n:"Klimmzugstange",s:'<path d="M12 44V8M52 44V8M6 10h52M6 44h12M46 44h12M24 10v5M40 10v5"/>'},
- {id:"dip",n:"Dipbarren",s:'<path d="M8 20h20M36 20h20M12 20v24M24 20v24M40 20v24M52 20v24M6 44h52"/>'},
- {id:"hipthrust",n:"Hip-Thrust-Maschine",s:'<rect x="6" y="18" width="16" height="8" rx="2"/><path d="M10 26v18M18 26v18M28 44h28M34 30v14M50 30v14"/><rect x="30" y="23" width="24" height="7" rx="3"/>'},
- {id:"abduct",n:"Abduktor / Adduktor",s:'<path d="M20 30h24M20 30 L16 8M14 44h36M32 30v14"/><rect x="21" y="33" width="6" height="10" rx="2"/><rect x="37" y="33" width="6" height="10" rx="2"/>'},
- {id:"calf",n:"Wadenmaschine",s:'<path d="M48 4v40M48 12H24M22 40h16M16 44h36M22 40v-4h16v4"/><rect x="24" y="12" width="9" height="5" rx="2"/>'},
- {id:"ez",n:"SZ-Stange",s:'<path d="M4 24h14l4-4 4 4 4-4 4 4 4-4 4 4h18"/><rect x="7" y="14" width="5" height="20" rx="1"/><rect x="52" y="14" width="5" height="20" rx="1"/>'},
- {id:"kb",n:"Kettlebell",s:'<circle cx="32" cy="30" r="12"/><path d="M25 21v-5q0-8 7-8t7 8v5"/>'},
- {id:"legcurl_s",n:"Beinbeuger sitzend",s:'<path d="M14 30h20M14 30V10M34 30h14M48 30v10M10 44h40M22 30v14"/><circle cx="48" cy="40" r="4"/>'},
- {id:"pendulum",n:"Pendel-Kniebeuge",s:'<path d="M10 44h44M16 44 L30 8M30 8 L48 20M40 14 L28 38M44 40h12"/>'},
- {id:"backext",n:"Hyperextension-Bank",s:'<path d="M8 44h48M16 44 L40 20M44 18l6-4M18 40l6-4"/><rect x="36" y="16" width="12" height="7" rx="2" transform="rotate(-35 42 20)"/>'},
- {id:"glutem",n:"Glute-Kickback-Maschine",s:'<path d="M10 44h44M20 44V22h12M44 44V12M32 22l12-6"/><rect x="30" y="20" width="10" height="7" rx="2"/>'},
- {id:"calfseated",n:"Wadenmaschine sitzend",s:'<path d="M12 30h20M22 30v14M14 44h40M30 20h16M36 20v10"/><rect x="40" y="36" width="12" height="8" rx="2"/>'},
- {id:"inclinechest",n:"Schrägbank-Brustpresse",s:'<path d="M18 36 L28 8M18 36h18M27 36v8M16 44h20M30 18h18M48 13v10M44 44V8"/>'},
- {id:"assist",n:"Klimmzug-/Dip-Assistent",s:'<path d="M12 44V6M52 44V6M8 8h48M20 30h24M32 30v14M24 22h16"/>'},
- {id:"pulloverm",n:"Pullover-Maschine",s:'<path d="M20 8v28M20 34h16M28 34v10M18 44h20M20 12 Q40 4 46 22M46 22v8"/>'},
- {id:"lateralm",n:"Seitheben-Maschine",s:'<path d="M32 10v26M26 34h12M32 36v8M22 44h20M32 16 L14 22M32 16 L50 22"/><rect x="10" y="20" width="6" height="10" rx="2"/><rect x="48" y="20" width="6" height="10" rx="2"/>'},
- {id:"preacher",n:"Scott-/Bizepsmaschine",s:'<path d="M14 34h18M23 34v10M14 44h20M30 18 L46 30M46 30v14M40 44h12"/><rect x="28" y="16" width="18" height="6" rx="2" transform="rotate(35 37 19)"/>'},
- {id:"trimach",n:"Trizeps-/Dip-Maschine",s:'<path d="M14 34h18M23 34v10M14 44h20M20 34V12M36 22 L48 14M48 14v30"/>'},
- {id:"absmach",n:"Bauchmaschine",s:'<path d="M16 34h18M25 34v10M16 44h20M18 34 L22 10M22 12 L40 18M40 18v26"/>'},
- {id:"torso",n:"Rotationsmaschine",s:'<path d="M24 34h16M32 34v10M22 44h20M32 10v24"/><ellipse cx="32" cy="20" rx="16" ry="5"/>'},
+ {id:"rack",g:"free",n:"Langhantel & Power Rack",s:'<path d="M18 6v38M46 6v38M12 44h12M40 44h12M4 20h56M18 23h4M46 23h-4"/><rect x="6" y="12" width="6" height="16" rx="1"/><rect x="52" y="12" width="6" height="16" rx="1"/>'},
+ {id:"db",g:"free",n:"Kurzhanteln",s:'<path d="M24 24h16"/><rect x="15" y="15" width="9" height="18" rx="2"/><rect x="40" y="15" width="9" height="18" rx="2"/><rect x="10" y="19" width="5" height="10" rx="1"/><rect x="49" y="19" width="5" height="10" rx="1"/>'},
+ {id:"bench",g:"free",n:"Flachbank",s:'<rect x="8" y="17" width="48" height="8" rx="3"/><path d="M16 25v15M48 25v15M11 41h10M43 41h10"/>'},
+ {id:"incline",g:"free",n:"Schrägbank (verstellbar)",s:'<path d="M14 34 L42 9 L47 14 L19 39 Z"/><path d="M19 34h22M24 38v6M44 34v10M16 44h34"/>'},
+ {id:"smith",g:"free",n:"Multipresse (Smith)",s:'<path d="M16 4v40M48 4v40M10 44h44M8 22h48"/><rect x="9" y="15" width="5" height="14" rx="1"/><rect x="50" y="15" width="5" height="14" rx="1"/>'},
+ {id:"ez",g:"free",n:"SZ-Stange",s:'<path d="M4 24h14l4-4 4 4 4-4 4 4 4-4 4 4h18"/><rect x="7" y="14" width="5" height="20" rx="1"/><rect x="52" y="14" width="5" height="20" rx="1"/>'},
+ {id:"kb",g:"free",n:"Kettlebell",s:'<circle cx="32" cy="30" r="12"/><path d="M25 21v-5q0-8 7-8t7 8v5"/>'},
+ {id:"landmine",g:"free",n:"Landmine",s:'<path d="M8 40 L52 12M4 44h14"/><circle cx="9" cy="40" r="3"/><circle cx="46" cy="16" r="8"/>'},
+ {id:"pullup",g:"free",n:"Klimmzugstange",s:'<path d="M12 44V8M52 44V8M6 10h52M6 44h12M46 44h12M24 10v5M40 10v5"/>'},
+ {id:"dip",g:"free",n:"Dipbarren",s:'<path d="M8 20h20M36 20h20M12 20v24M24 20v24M40 20v24M52 20v24M6 44h52"/>'},
+ {id:"vkr",g:"free",n:"Beinhebestation (Power Tower)",s:'<path d="M16 44V6M48 44V6M10 44h12M42 44h12M16 8h32M16 24h10M48 24H38"/><rect x="26" y="14" width="12" height="18" rx="2"/>'},
+ {id:"assist",g:"free",n:"Klimmzug-/Dip-Assistent",s:'<path d="M12 44V6M52 44V6M8 8h48M20 30h24M32 30v14M24 22h16"/>'},
+ {id:"cable",g:"cable",n:"Kabelzug (Station)",s:'<rect x="22" y="4" width="20" height="40" rx="2"/><circle cx="32" cy="10" r="3"/><path d="M32 13v14M25 29h14"/><rect x="27" y="33" width="10" height="8"/>'},
+ {id:"cable2",g:"cable",n:"Doppelter Kabelzug",s:'<rect x="6" y="4" width="10" height="40" rx="2"/><rect x="48" y="4" width="10" height="40" rx="2"/><path d="M16 8h32M11 10v16M53 10v16M8 28h6M50 28h6"/>'},
+ {id:"cableadj",g:"cable",n:"Verstellbarer Kabelzug",s:'<rect x="26" y="4" width="12" height="40" rx="2"/><path d="M22 12v26M42 12v26"/><circle cx="32" cy="22" r="3"/><path d="M32 22h16M20 44h24M48 18v8"/>'},
+ {id:"cablehi",g:"cable",n:"Hoher Kabelzug",s:'<rect x="26" y="4" width="12" height="40" rx="2"/><circle cx="32" cy="9" r="3"/><path d="M32 12 L46 24M42 24h8M20 44h24"/>'},
+ {id:"cablelo",g:"cable",n:"Tiefer Kabelzug",s:'<rect x="26" y="4" width="12" height="40" rx="2"/><circle cx="32" cy="38" r="3"/><path d="M32 38 L48 30M44 30h8M20 44h24"/>'},
+ {id:"latpull",g:"cable",n:"Latzug (Kabel)",s:'<path d="M18 44V6h28v38M8 18h48M32 6v12M24 36h16M32 36v8M22 29h20"/>'},
+ {id:"cablerow",g:"cable",n:"Rudern sitzend (Kabel)",s:'<path d="M54 4v40M6 44h52M8 34h22M18 34v10M44 24v16M54 10 L33 25M31 21v8"/>'},
+ {id:"legpress",g:"legs",n:"45°-Beinpresse",s:'<path d="M6 44h52M10 40 L46 10M8 28 L18 40h10M41 5 L54 16 L50 21 L37 10 Z"/>'},
+ {id:"legpress_s",g:"legs",n:"Sitzende Beinpresse (horizontal)",s:'<path d="M6 44h52M16 30h16M16 30v14M18 30 L12 12M44 10v26M40 10h8"/><rect x="50" y="8" width="8" height="30" rx="1"/>'},
+ {id:"legpress_lying",g:"legs",n:"Liegende Beinpresse",s:'<path d="M6 44h52M8 32h24M14 32v12M32 32 L30 14M46 8v28M42 8h8"/>'},
+ {id:"legpress_dual",g:"legs",n:"Duale Beinpresse",s:'<path d="M6 44h52M10 40 L30 14M30 14 L36 24M40 6 L52 18M34 10 L46 22"/><circle cx="48" cy="32" r="5"/>'},
+ {id:"hack",g:"legs",n:"Hackenschmidt-Maschine",s:'<path d="M8 44h48M14 44 L30 5M24 9 L36 13 L26 40 L15 36 Z M38 40h16"/>'},
+ {id:"vsquat",g:"legs",n:"V-Squat",s:'<path d="M6 44h52M10 44 L46 14M24 22h16M30 22 L36 30M48 8v14"/><rect x="40" y="8" width="12" height="6" rx="2"/>'},
+ {id:"pendulum",g:"legs",n:"Pendel-Kniebeuge",s:'<path d="M10 44h44M16 44 L30 8M30 8 L48 20M40 14 L28 38M44 40h12"/>'},
+ {id:"beltsquat",g:"legs",n:"Belt-Squat-Maschine",s:'<path d="M6 44h52M14 36h36M32 36V22M32 22 L54 12M20 22h24"/><circle cx="56" cy="11" r="4"/>'},
+ {id:"sissym",g:"legs",n:"Sissy-Squat-Vorrichtung",s:'<path d="M8 40h48M16 40v4M48 40v4M20 40V18h8M36 30h12"/><circle cx="40" cy="30" r="3"/><circle cx="48" cy="30" r="3"/>'},
+ {id:"legext",g:"legs",n:"Beinstrecker",s:'<path d="M14 30h20M14 30V10M34 30 L42 37M10 44h40M22 30v14"/><circle cx="44" cy="39" r="4"/>'},
+ {id:"legcurl",g:"legs",n:"Beinbeuger liegend",s:'<path d="M8 25h40M14 25v15M40 25v15M8 40h40M48 25 L53 20"/><circle cx="55" cy="18" r="4"/>'},
+ {id:"legcurl_s",g:"legs",n:"Beinbeuger sitzend",s:'<path d="M14 30h20M14 30V10M34 30h14M48 30v10M10 44h40M22 30v14"/><circle cx="48" cy="40" r="4"/>'},
+ {id:"legcurl_st",g:"legs",n:"Beinbeuger stehend",s:'<path d="M8 44h40M16 44V12M16 14h12M16 30h14M40 44V18"/><circle cx="34" cy="36" r="4"/><rect x="36" y="16" width="8" height="10" rx="2"/>'},
+ {id:"hipthrust",g:"legs",n:"Hip-Thrust-Maschine",s:'<rect x="6" y="18" width="16" height="8" rx="2"/><path d="M10 26v18M18 26v18M28 44h28M34 30v14M50 30v14"/><rect x="30" y="23" width="24" height="7" rx="3"/>'},
+ {id:"glutem",g:"legs",n:"Glute-Kickback-Maschine",s:'<path d="M10 44h44M20 44V22h12M44 44V12M32 22l12-6"/><rect x="30" y="20" width="10" height="7" rx="2"/>'},
+ {id:"abduct",g:"legs",n:"Abduktor/Adduktor (Kombi)",s:'<path d="M20 30h24M20 30 L16 8M14 44h36M32 30v14"/><rect x="21" y="33" width="6" height="10" rx="2"/><rect x="37" y="33" width="6" height="10" rx="2"/>'},
+ {id:"abductm",g:"legs",n:"Hüftabduktion sitzend",s:'<path d="M20 30h24M20 30 L16 8M14 44h36M32 30v14"/><rect x="12" y="32" width="6" height="10" rx="2"/><rect x="46" y="32" width="6" height="10" rx="2"/>'},
+ {id:"adductm",g:"legs",n:"Adduktoren-Maschine sitzend",s:'<path d="M20 30h24M20 30 L16 8M14 44h36M32 30v14"/><rect x="24" y="32" width="5" height="10" rx="2"/><rect x="35" y="32" width="5" height="10" rx="2"/>'},
+ {id:"calf",g:"legs",n:"Wadenmaschine stehend",s:'<path d="M48 4v40M48 12H24M22 40h16M16 44h36M22 40v-4h16v4"/><rect x="24" y="12" width="9" height="5" rx="2"/>'},
+ {id:"calfseated",g:"legs",n:"Wadenheben sitzend",s:'<path d="M12 30h20M22 30v14M14 44h40M30 20h16M36 20v10"/><rect x="40" y="36" width="12" height="8" rx="2"/>'},
+ {id:"calfpress",g:"legs",n:"Wadenpresse sitzend",s:'<path d="M6 44h52M10 32h20M16 32v12M12 32 L8 14M44 22h10M50 14v16"/><circle cx="38" cy="22" r="3"/>'},
+ {id:"deadliftm",g:"legs",n:"Kreuzhebemaschine",s:'<path d="M6 40h52M10 40l8-14h28l8 14M18 26 L14 18M46 26 L50 18M26 32h12"/><circle cx="14" cy="34" r="5"/><circle cx="50" cy="34" r="5"/>'},
+ {id:"backext",g:"legs",n:"Hyperextension-Bank (45°)",s:'<path d="M8 44h48M16 44 L40 20M44 18l6-4M18 40l6-4"/><rect x="36" y="16" width="12" height="7" rx="2" transform="rotate(-35 42 20)"/>'},
+ {id:"backextm",g:"legs",n:"Rückenstrecker-Maschine (sitzend)",s:'<path d="M14 44V8h10v36M10 44h40M24 30h16M36 30v14M24 14 L44 18M44 18v6"/><rect x="40" y="10" width="10" height="6" rx="2"/>'},
+ {id:"chestpress",g:"push",n:"Brustpresse",s:'<path d="M20 6v30M20 34h14M27 34v10M18 44h18M20 18h22M42 13v10"/>'},
+ {id:"chestlying",g:"push",n:"Liegende Brustpresse",s:'<rect x="8" y="30" width="34" height="6" rx="2"/><path d="M14 36v8M36 36v8M6 44h52M46 44V12M30 14h22"/><circle cx="54" cy="18" r="5"/>'},
+ {id:"inclinechest",g:"push",n:"Schräge Brustpresse",s:'<path d="M18 36 L28 8M18 36h18M27 36v8M16 44h20M30 18h18M48 13v10M44 44V8"/>'},
+ {id:"declinechest",g:"push",n:"Negativbrustpresse",s:'<path d="M8 44h48M14 44 L22 16M22 16 L34 30M16 30h20M40 44V8M28 12h20"/><circle cx="48" cy="20" r="5"/>'},
+ {id:"pecdeck",g:"push",n:"Butterfly",s:'<path d="M32 8v28M26 34h12M32 36v8M22 44h20M32 14 Q14 14 14 30M32 14 Q50 14 50 30"/>'},
+ {id:"pecbent",g:"push",n:"Butterfly (gebeugte Arme)",s:'<path d="M32 10v26M26 34h12M32 36v8M22 44h20M32 14H14v14M32 14h18v14"/><rect x="10" y="20" width="6" height="12" rx="2"/><rect x="48" y="20" width="6" height="12" rx="2"/>'},
+ {id:"revfly",g:"push",n:"Reverse Butterfly",s:'<path d="M32 8v28M26 34h12M32 36v8M22 44h20M32 14 Q50 14 50 30M32 14 Q14 14 14 30"/><rect x="28" y="16" width="8" height="14" rx="2"/>'},
+ {id:"shoulderpress",g:"push",n:"Schulterpresse",s:'<path d="M24 8v28M24 34h14M30 34v10M20 44h20M16 12h32M16 6v10M48 6v10"/>'},
+ {id:"lateralm",g:"push",n:"Seitheben-Maschine (gebeugt)",s:'<path d="M32 10v26M26 34h12M32 36v8M22 44h20M32 16 L14 22M32 16 L50 22"/><rect x="10" y="20" width="6" height="10" rx="2"/><rect x="48" y="20" width="6" height="10" rx="2"/>'},
+ {id:"lateralm2",g:"push",n:"Seitheben-Maschine (gestreckt)",s:'<path d="M32 10v34M24 44h16M32 16H10M32 16h22M24 36h16"/><rect x="6" y="12" width="6" height="8" rx="2"/><rect x="52" y="12" width="6" height="8" rx="2"/>'},
+ {id:"dipmach",g:"push",n:"Dip-Maschine",s:'<path d="M12 44h40M18 44V24h14M24 24 L20 10M38 30h14M52 30V14M46 44V30"/><circle cx="52" cy="12" r="3"/>'},
+ {id:"latm",g:"pull",n:"Latzugmaschine (frei geführt)",s:'<path d="M10 44h44M18 44V24h14M18 24 L14 12M40 44 L26 8M26 8 L46 4M46 4v8"/><circle cx="34" cy="24" r="5"/>'},
+ {id:"highrow",g:"pull",n:"High-Row",s:'<path d="M10 44h44M16 44V26h12M20 26 L16 14M34 44V8M34 8h20M54 8 L50 22M46 8 L44 20"/><circle cx="50" cy="27" r="5"/>'},
+ {id:"lowrow",g:"pull",n:"Low Row",s:'<path d="M6 44h52M12 44V30h14M16 30 L14 20M44 44V14M40 14 L52 26M38 26h14"/><circle cx="52" cy="32" r="4"/>'},
+ {id:"rowmachine",g:"pull",n:"Rudermaschine (brustgestützt)",s:'<path d="M14 32 L30 18M8 44h48M20 44V30M34 26h16M42 26v-9M50 26v18"/>'},
+ {id:"tbarm",g:"pull",n:"T-Bar-Maschine",s:'<path d="M6 44h52M10 44 L50 18M44 22v-8M38 22h12M30 44V30"/><rect x="26" y="24" width="12" height="6" rx="2"/><circle cx="52" cy="16" r="5"/>'},
+ {id:"pulloverm",g:"pull",n:"Überzugmaschine (Pullover)",s:'<path d="M20 8v28M20 34h16M28 34v10M18 44h20M20 12 Q40 4 46 22M46 22v8"/>'},
+ {id:"shrugm",g:"pull",n:"Shrug-Maschine",s:'<path d="M6 44h52M12 44V20M52 44V20M12 24h40M20 24v10M44 24v10"/><circle cx="12" cy="18" r="5"/><circle cx="52" cy="18" r="5"/>'},
+ {id:"preacher",g:"arms",n:"Bizepsmaschine (Scott)",s:'<path d="M14 34h18M23 34v10M14 44h20M30 18 L46 30M46 30v14M40 44h12"/><rect x="28" y="16" width="18" height="6" rx="2" transform="rotate(35 37 19)"/>'},
+ {id:"trimach",g:"arms",n:"Trizepsmaschine",s:'<path d="M14 34h18M23 34v10M14 44h20M20 34V12M36 22 L48 14M48 14v30"/>'},
+ {id:"absmach",g:"core",n:"Bauchpresse (Maschine)",s:'<path d="M16 34h18M25 34v10M16 44h20M18 34 L22 10M22 12 L40 18M40 18v26"/>'},
+ {id:"abslying",g:"core",n:"Liegende Bauchpresse",s:'<path d="M6 36h40M12 36v8M40 36v8M6 44h44M46 36 L54 20M50 14h8M18 28h20M18 28 L14 20"/>'},
+ {id:"torso",g:"core",n:"Rotationsmaschine",s:'<path d="M24 34h16M32 34v10M22 44h20M32 10v24"/><ellipse cx="32" cy="20" rx="16" ry="5"/>'},
 ];
+const EQG={"free": "Freie Gewichte & Stationen", "cable": "Kabelzüge", "legs": "Beine & Po", "push": "Brust & Schultern", "pull": "Rücken & Nacken", "arms": "Arme", "core": "Bauch & Rumpf"};
 const EQMAP=Object.fromEntries(EQ.map(e=>[e.id,e]));
 const eqSvg=(id,cls="")=>`<svg class="${cls}" viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${EQMAP[id]?EQMAP[id].s:'<circle cx="32" cy="12" r="5"/><path d="M32 17v14M22 24h20M32 31l-7 12M32 31l7 12"/>'}</svg>`;
 
@@ -634,8 +665,9 @@ function vGym(){
  return`<div class="section">
  <div><h2>Mein Studio</h2><p class="muted small" style="margin:4px 0 0">Tippe an, was dein Studio hat. Der Planer nimmt nur Übungen, die du dort machen kannst.</p></div>
  <div class="row wrapr"><span class="tag">${M.equipment.length} von ${EQ.length} Geräten</span><span class="tag">${n} Übungen möglich</span><span class="grow"></span><button class="btn sm ghost" data-act="eqAll">Alle</button><button class="btn sm ghost" data-act="eqNone">Keine</button></div>
- <div class="eqgrid">${EQ.map(e=>`<button class="eq ${set.has(e.id)?"on":""}" data-act="eq" data-id="${e.id}" aria-pressed="${set.has(e.id)}"><span class="ck">${set.has(e.id)?"✓":""}</span>${eqSvg(e.id)}<span class="nm">${e.n}</span></button>`).join("")}</div>
- <p class="small muted">Übungen mit Körpergewicht sind immer dabei.</p></div>`;
+ ${Object.entries(EQG).map(([g,t])=>{const l=EQ.filter(e=>e.g===g);return`<div class="row" style="padding-top:6px"><h3 class="grow">${t}</h3><span class="small muted">${l.filter(e=>set.has(e.id)).length} / ${l.length}</span></div>
+ <div class="eqgrid">${l.map(e=>`<button class="eq ${set.has(e.id)?"on":""}" data-act="eq" data-id="${e.id}" aria-pressed="${set.has(e.id)}"><span class="ck">${set.has(e.id)?"✓":""}</span>${eqSvg(e.id)}<span class="nm">${e.n}</span></button>`).join("")}</div>`}).join("")}
+ <p class="small muted">Übungen mit Körpergewicht sind immer dabei. Ein Kabelzug (Station, doppelt oder verstellbar) zählt auch als hoher und tiefer Kabelzug.</p></div>`;
 }
 
 function schemeTxt(it){return`${it.sets} × ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax}`}
@@ -1195,6 +1227,7 @@ function bodySvg(set,sec,cls){
  return`<svg class="${cls||"fig"}" viewBox="0 0 120 210" aria-hidden="true"><defs><radialGradient id="mg" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#7CC4FF"/><stop offset="1" stop-color="#1F6BFF"/></radialGradient><radialGradient id="mg2" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#FFB38A"/><stop offset="1" stop-color="#E5533D"/></radialGradient><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
  <circle class="p" cx="60" cy="16" r="10"/><rect class="p" x="55" y="26" width="10" height="7" rx="3"/>
  <ellipse class="p ${on("side","front","rear")}" cx="37" cy="43" rx="10" ry="8"/><ellipse class="p ${on("side","front","rear")}" cx="83" cy="43" rx="10" ry="8"/>
+ <path class="p ${on("traps")}" d="M50 33l-7 5h34l-7-5z"/>
  <path class="p ${on("chest")}" d="M45 38h14v22c-6 2-11 1-15-2-2-6-1-14 1-20z"/><path class="p ${on("chest")}" d="M75 38H61v22c6 2 11 1 15-2 2-6 1-14-1-20z"/>
  <path class="p ${on("back")}" d="M43 60c3 4 4 14 3 26l-6-2c-2-8-2-17 0-24z"/><path class="p ${on("back")}" d="M77 60c-3 4-4 14-3 26l6-2c2-8 2-17 0-24z"/>
  <rect class="p ${on("abs")}" x="50" y="62" width="20" height="34" rx="6"/>
@@ -1322,7 +1355,26 @@ const CUES_ID={
  lat_raise_m:["Ellbogen an die Polster, Schultern unten","Bis Schulterhöhe heben","Langsam absenken"],
  calf_seated:["Knie unter dem Polster, Fußballen auf der Kante","Ganz tief in die Dehnung","Oben kurz halten"],
  torso_m:["Hüfte und Beine fixiert, Rücken an der Lehne","Langsam aus dem Rumpf drehen","Kontrolliert zurück, beide Seiten gleich"],
- cable_oh_tri:["Rücken zum Kabelzug, Oberarme neben dem Kopf","Unterarme in die Dehnung hinter den Kopf","Nach vorn oben strecken, Ellbogen bleiben eng"]
+ cable_oh_tri:["Rücken zum Kabelzug, Oberarme neben dem Kopf","Unterarme in die Dehnung hinter den Kopf","Nach vorn oben strecken, Ellbogen bleiben eng"],
+ belt_squat:["Gurt eng um die Hüfte, Füße schulterbreit auf der Plattform","Aufrecht bleiben, Hände nur leicht an den Griffen","Tief in die Hocke, über die ganze Fußsohle hochdrücken"],
+ v_squat:["Schultern unter die Polster, Füße mittig auf der Plattform","Kontrolliert tief absenken, Knie folgen den Zehen","Hochdrücken ohne die Knie ganz durchzustrecken"],
+ sissy_m:["Waden unter die Polster, Füße auf der Platte fixiert","Körper in einer Linie von Knie bis Kopf nach hinten neigen","Langsam absenken, mit den Oberschenkeln zurück nach oben"],
+ legpress_1:["Ein Fuß mittig auf die Platte, Rücken fest am Polster","Knie folgt der Fußspitze, nicht nach innen fallen lassen","Beide Seiten gleich viele Wiederholungen"],
+ dl_machine:["Griffe auf Höhe der Hände, Füße hüftbreit","Rücken neutral, Hüfte nach hinten schieben","Mit der Hüfte nach vorn aufrichten, oben Po anspannen"],
+ backext_m:["Füße fest, Hüfte am Drehpunkt der Maschine","Langsam nach vorn beugen, Rücken bleibt neutral","Kontrolliert zurück bis in die Linie, nicht überstrecken"],
+ legcurl_st:["Knie auf Höhe des Drehpunkts, Hüfte bleibt am Polster","Ferse kraftvoll zum Po ziehen","Langsam strecken, beide Seiten trainieren"],
+ calf_press_s:["Fußballen auf der Kante, Knie leicht gebeugt","Ganz tief in die Dehnung","Hochdrücken und oben kurz halten"],
+ pecdeck_bent:["Unterarme an die Polster, Ellbogen auf Schulterhöhe","Mit den Ellbogen nach vorn zusammenführen","Langsam öffnen bis zur Dehnung der Brust"],
+ lat_raise_m2:["Arme gestreckt an den Polstern bzw. Griffen, Schultern unten","Seitlich bis Schulterhöhe heben","Langsam absenken"],
+ lm_press:["Stangenende auf Schulterhöhe, Rumpf fest","Schräg nach vorn oben drücken","Kontrolliert zur Schulter zurück"],
+ lm_row:["Hüfte gebeugt, Rücken gerade, Stange zwischen den Beinen","Griff zum Bauch ziehen, Ellbogen nah am Körper","Langsam strecken bis zur Dehnung"],
+ high_row:["Brust ans Polster, Schultern zuerst nach unten","Griffe schräg nach unten zur Brust ziehen","Langsam zurück bis zur Streckung"],
+ low_row:["Brust ans Polster, Füße fest","Griffe zum Bauch ziehen, Schulterblätter zusammen","Kontrolliert zurück in die Dehnung"],
+ latm_pull:["Oberschenkel unter die Polster","Ellbogen nach unten zu den Hüften ziehen","Oben volle Streckung, kein Schwung"],
+ vkr_raise:["Unterarme auf die Polster, Rücken an die Lehne","Knie bzw. Beine kontrolliert hochziehen, Becken leicht einrollen","Langsam absenken, nicht schwingen"],
+ ab_lying:["Rücken auf dem Polster, Griffe fassen","Oberkörper einrollen, Rippen Richtung Becken","Langsam zurück, Spannung halten"],
+ chest_lying:["Schulterblätter zusammen, Füße fest am Boden","Griffe auf Brusthöhe","Kraftvoll hochdrücken, kontrolliert zurück"],
+ decline_mp:["Rücken fest an der Lehne, Griffe auf unterer Brusthöhe","Nach vorn unten drücken","Langsam zurück bis zur Dehnung"]
 };
 const CUES={
  squat:["Füße etwa schulterbreit, Knie folgen den Zehen","Brust aufrecht, Rumpf vor dem Absenken fest anspannen","So tief gehen, wie es sauber geht","Über die ganze Fußsohle hochdrücken"],
@@ -1340,7 +1392,8 @@ const CUES={
  bi:["Ellbogen bleiben am Körper","Ganz strecken und ganz beugen","Kein Schwung aus dem Rücken"],
  tri:["Oberarme fixieren","Am Ende vollständig strecken","Langsam zurück in die Beugung"],
  calf:["Ganz tief in die Dehnung","Oben auf den Fußballen kurz halten","Kein Wippen"],
- core:["Bauch einziehen, Rücken am Boden bzw. neutral","Langsam und kontrolliert","Ausatmen in der Anspannung"]
+ core:["Bauch einziehen, Rücken am Boden bzw. neutral","Langsam und kontrolliert","Ausatmen in der Anspannung"],
+ shrug:["Arme gestreckt, Gewicht nah am Körper","Schultern gerade nach oben zu den Ohren ziehen","Oben kurz halten, langsam absenken, nicht kreisen"]
 };
 function exInfoSheet(exId,tab){
  const ex=EXMAP[exId];if(!ex)return;const t=tab||"ov";SH=Object.assign(SH||{},{exInfo:exId,exTab:t});
@@ -1700,6 +1753,7 @@ $("#importIn").addEventListener("change",async e=>{const f=e.target.files[0];e.t
  await Store.init();
  try{await Store.loadAll()}catch(e){toast("Daten konnten nicht geladen werden.")}
  M.settings=M.settings||{rest:90};M.products=M.products||{};M.weights=M.weights||[];M.prefs=M.prefs||{excluded:[],fav:[]};M.homeEquipment=M.homeEquipment||[];if(M.plan&&M.plan.v===2&&!M.plan.id)M.plan.id="p"+uid();
+ if((M.eqv||1)<2){/* Geräte aufgeteilt: T-Bar und Dip-Maschine sind jetzt eigene Geräte */const es=new Set(M.equipment||[]);if(es.has("rowmachine"))es.add("tbarm");if(es.has("trimach"))es.add("dipmach");M.equipment=[...es];M.eqv=2;persist("main")}
  UI.ready=true;render();
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
  if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}

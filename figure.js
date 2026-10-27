@@ -29,7 +29,7 @@ function solve(p) {
   let H = p.hip;
   if (p.toe) { const A = add(p.toe, (p.foot || 0) + 180, L.ft); const K = add(A, p.shin + 180, L.sh); H = add(K, p.thigh + 180, L.th); }
   else if (p.ankle) { const K = add(p.ankle, p.shin + 180, L.sh); H = add(K, p.thigh + 180, L.th); }
-  const S = add(H, p.torso, L.torso), N = add(S, p.torso + (p.neck || 0), L.neck);
+  const S0 = add(H, p.torso, L.torso), S = p.lift ? [S0[0], S0[1] + p.lift] : S0, N = add(S, p.torso + (p.neck || 0), L.neck);
   let E, W;
   if (p.hand) { E = ik(S, p.hand, L.ua, L.fa, p.ebend || 1); W = add(E, ang(E, p.hand), L.fa); }
   else { E = add(S, p.ua, L.ua); W = add(E, p.fa, L.fa); }
@@ -63,7 +63,8 @@ const MUSCLE = {
   quads: J => [J.H, J.K, .14, .9, 1, 3, 7],
   hams: J => [J.H, J.K, .18, .92, -1, 3, 6.5],
   adductors: J => [J.H, J.K, .1, .62, 0, 0, 7],
-  calves: J => [J.K, J.A, .1, .58, -1, 3, 6.5]
+  calves: J => [J.K, J.A, .1, .58, -1, 3, 6.5],
+  traps: J => [J.S, J.N, -.15, .75, 1, 3, 7]
 };
 
 const C = {body: "#B9C4DA", far: "#66728C", frame: "#3B5079", pad: "#22314F", plate: "#5D73A0", cable: "#86B4FF", p: "#FF4D3D", s: "#FF9F6E"};
@@ -152,6 +153,9 @@ const T = {
   cablecrunch: {a: {hip: [96, 48], torso: 82, thigh: -90, shin: 180, foot: 180, ua: 110, fa: -30}, b: {hip: [96, 48], torso: 20, thigh: -90, shin: 180, foot: 180, ua: 30, fa: -100},
     props: J => ground() + cable(J.W, [140, 190]) + line([140, 6], [140, 192], 4)},
   abmach: {a: sit({torso: 96, ua: 70, fa: -60}), b: sit({torso: 52, ua: 25, fa: -80}), props: J => seat(64, 55, 36) + rect(J.S[0] - 6, J.S[1] - 2, 18, 6, J.p.torso - 90, J.S[0], J.S[1]) + line([130, 6], [130, 160], 4)},
+  shrug: {a: stand({ua: -78, fa: -80, lift: 0}), b: stand({ua: -78, fa: -80, lift: 11}), props: (J, o) => ground() + (o.load === "machine" ? handle(J.W) + line(J.W, [150, J.W[1]], 2) + line([150, 6], [150, 120], 4) : load(o, J))},
+  standcurl: {a: {hip: [92, 88], torso: 84, thigh: -82, shin: -92, foot: 0, thigh2: -90, shin2: -90, ua: -30, fa: 20}, b: {hip: [92, 88], torso: 84, thigh: -82, shin: -200, foot: -110, thigh2: -90, shin2: -90, ua: -30, fa: 20},
+    props: J => ground() + roller(add(J.A, J.p.shin - 90, 6)) + rect(J.K[0] + 4, J.K[1] + 2, 7, 22) + line([140, 6], [140, 120], 4) + handle(J.W)},
   legraise: {a: {hip: [92, 60], torso: 90, thigh: -90, shin: -90, foot: -20, hand: [94, 160]}, b: {hip: [92, 66], torso: 98, thigh: 2, shin: 0, foot: 60, hand: [94, 160]},
     props: J => line([70, 160], [125, 160], 4) + line([125, 160], [125, 6], 4) + ground()}
 };
@@ -214,6 +218,11 @@ const MAP = {
   preacher_m: ["preacher", {load: "handle"}], ez_preacher: ["preacher", {load: "bb"}],
   pushdown: ["pushdown", {}], oh_db: ["overhead", {load: "db"}], cable_oh_tri: ["overhead", {load: "cable"}], skull: ["skull", {load: "bb"}], tri_m: ["trimach", {}], dip_m: ["dipmach", {}],
   calf_m: ["calf", {load: "machine"}], calf_db: ["calf", {load: "db"}], calf_bw: ["calf", {}], calf_lp: ["calfpress", {}], calf_seated: ["calfseat", {}],
+  legpress_s: ["legpress", {}], legpress_l: ["legpress", {}], legpress_1: ["legpress", {}], belt_squat: ["squat", {}], v_squat: ["hack", {}], sissy_m: ["goblet", {}],
+  dl_machine: ["deadlift", {load: "bb"}], backext_m: ["backext", {}], legcurl_st: ["standcurl", {}], calf_press_s: ["calfpress", {}],
+  chest_lying: ["bench", {load: "handle"}], decline_mp: ["chestpress", {}], pecdeck_bent: ["fly", {}], lm_press: ["ohp", {load: "bb"}], lat_raise_m2: ["#lateral"],
+  latm_pull: ["pulldown", {}], high_row: ["pulldown", {}], low_row: ["rowchest", {}], lm_row: ["bentrow", {load: "bb"}],
+  shrug_m: ["shrug", {load: "machine"}], shrug_db: ["shrug", {load: "db"}], vkr_raise: ["legraise", {}], ab_lying: ["crunch", {}],
   cable_crunch: ["cablecrunch", {}], ab_m: ["abmach", {}], torso_m: ["abmach", {}], crunch: ["crunch", {}], deadbug: ["crunch", {}], hlr: ["legraise", {}]
 };
 
