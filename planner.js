@@ -102,6 +102,7 @@ function weeklyTargets(o) {
 const DAYTYPE = {
   FB:["quads","hams","chest","back","front","glutes","side","rear","triceps","biceps","calves","abs"],
   U:["chest","back","front","side","rear","triceps","biceps"],
+  UA:["chest","back","front","side","rear","triceps","biceps","abs"],
   L:["quads","hams","glutes","calves","abs"],
   PU:["chest","front","side","triceps"],
   PL:["back","rear","biceps","abs"],
@@ -117,6 +118,18 @@ const SPLITS = {
   ULULF:{n:"Ober/Unter + Ganzkörper",days:[["Oberkörper A","U"],["Unterkörper A","L"],["Oberkörper B","U"],["Unterkörper B","L"],["Ganzkörper","FB"]]},
   ULPPL:{n:"Ober/Unter + Push/Pull/Beine",days:[["Oberkörper","U"],["Unterkörper","L"],["Push","PU"],["Pull","PL"],["Beine","LG"]]},
   PPL2:{n:"Push/Pull/Beine",days:[["Push A","PU"],["Pull A","PL"],["Beine A","LG"],["Push B","PU"],["Pull B","PL"],["Beine B","LG"]]},
+  UP2:{n:"Oberkörper 2×",days:[["Oberkörper A","UA"],["Oberkörper B","UA"]]},
+  UP3:{n:"Oberkörper 3×",days:[["Oberkörper A","UA"],["Oberkörper B","UA"],["Oberkörper C","UA"]]},
+  PPU3:{n:"Push/Pull/Oberkörper",days:[["Push","PU"],["Pull","PL"],["Oberkörper","UA"]]},
+  UP4:{n:"Push/Pull 2×",days:[["Push A","PU"],["Pull A","PL"],["Push B","PU"],["Pull B","PL"]]},
+  UPU4:{n:"Oberkörper 4×",days:[["Oberkörper A","UA"],["Oberkörper B","UA"],["Oberkörper C","UA"],["Oberkörper D","UA"]]},
+  UP5:{n:"Push/Pull + Oberkörper",days:[["Push A","PU"],["Pull A","PL"],["Oberkörper","UA"],["Push B","PU"],["Pull B","PL"]]},
+  UP6:{n:"Push/Pull 3×",days:[["Push A","PU"],["Pull A","PL"],["Push B","PU"],["Pull B","PL"],["Push C","PU"],["Pull C","PL"]]},
+  LO2:{n:"Beine 2×",days:[["Beine A","L"],["Beine B","L"]]},
+  LO3:{n:"Beine 3×",days:[["Beine A","L"],["Beine B","L"],["Beine C","L"]]},
+  LO4:{n:"Beine 4×",days:[["Beine A","L"],["Beine B","L"],["Beine C","L"],["Beine D","L"]]},
+  LO5:{n:"Beine 5×",days:[["Beine A","L"],["Beine B","L"],["Beine C","L"],["Beine D","L"],["Beine E","L"]]},
+  LO6:{n:"Beine 6×",days:[["Beine A","L"],["Beine B","L"],["Beine C","L"],["Beine D","L"],["Beine E","L"],["Beine F","L"]]},
   UL6:{n:"Oberkörper/Unterkörper 3×",days:[["Oberkörper A","U"],["Unterkörper A","L"],["Oberkörper B","U"],["Unterkörper B","L"],["Oberkörper C","U"],["Unterkörper C","L"]]}
 };
 const SPLIT_WHY = {
@@ -129,11 +142,30 @@ const SPLIT_WHY = {
   ULULF:"Ober/Unter zweimal plus ein Ganzkörpertag: jeder Muskel 2–3× pro Woche, ohne dass eine Einheit zu lang wird.",
   ULPPL:"Ober/Unter plus Push/Pull/Beine: jeder Muskel 2× pro Woche, mit genug Raum für hohes Volumen.",
   PPL2:"Push/Pull/Beine zweimal: jeder Muskel 2× pro Woche, viel Volumen verteilbar, kurze Erholungswege zwischen den Tagen.",
+  UP2:"Ohne Beine: zweimal Oberkörper, jeder Muskel 2× pro Woche.",
+  UP3:"Ohne Beine: dreimal Oberkörper, jeder Muskel bis zu 3× pro Woche in gut erholbaren Portionen.",
+  PPU3:"Ohne Beine: Push, Pull und ein Oberkörpertag, jeder Muskel 2× pro Woche mit klarem Fokus je Einheit.",
+  UP4:"Ohne Beine: Push und Pull je zweimal, jeder Muskel 2× pro Woche mit viel Platz für Volumen.",
+  UPU4:"Ohne Beine: viermal Oberkörper mit wenigen Sätzen pro Muskel und Einheit.",
+  UP5:"Ohne Beine: Push/Pull zweimal plus ein Oberkörpertag, jeder Muskel 2–3× pro Woche.",
+  UP6:"Ohne Beine: Push und Pull je dreimal, jeder Muskel 3× pro Woche.",
+  LO2:"Nur Beine: zwei Beintage pro Woche.",LO3:"Nur Beine: drei Beintage pro Woche.",LO4:"Nur Beine: vier Beintage pro Woche.",LO5:"Nur Beine: fünf Beintage pro Woche.",LO6:"Nur Beine: sechs Beintage pro Woche.",
   UL6:"Oberkörper/Unterkörper dreimal: jeder Muskel 3× pro Woche mit wenig Sätzen pro Einheit. Gut erholbar."
 };
+const LOWER = ["quads","hams","glutes","calves"], UPPER = ["chest","back","front","side","rear","triceps","biceps"];
 function recommendSplit(o) {
   const n = o.days, beg = o.level === "beg", short = o.minutes <= 45;
   let id, alts = [], note = "";
+  const skip = new Set(o.skip || []);
+  if (LOWER.every(m => skip.has(m))) {
+    const k = Math.min(6, Math.max(2, n));
+    id = {2:"UP2",3:"UP3",4:"UP4",5:"UP5",6:"UP6"}[k]; alts = k === 3 ? ["PPU3"] : k === 4 ? ["UPU4"] : [];
+    return {id, why: SPLIT_WHY[id], alts, note: "Beine sind ausgeschlossen. Die Tage verteilen sich nur auf den Oberkörper."};
+  }
+  if (UPPER.filter(m => m !== "front").every(m => skip.has(m))) {
+    id = "LO" + Math.min(6, Math.max(2, n));
+    return {id, why: SPLIT_WHY[id], alts: [], note: "Oberkörper ist ausgeschlossen."};
+  }
   if (n <= 2) { id = "FB2"; }
   else if (n === 3) { id = "FB3"; alts = ["ULF"]; }
   else if (n === 4) { id = "UL4"; alts = ["FB4"]; }
@@ -198,14 +230,16 @@ function poolFor(m, exposure) {
 
 /* ---------- Plan erstellen ---------- */
 function generate(o) {
-  o = Object.assign({goal:"muskel", level:"int", days:3, minutes:60, equipment:[], prio:[], injuries:[], excluded:[], fav:[]}, o);
+  o = Object.assign({goal:"muskel", level:"int", days:3, minutes:60, equipment:[], prio:[], injuries:[], excluded:[], fav:[], skip:[]}, o);
+  const skip = new Set(o.skip || []);
   const li = LVL[o.level] ?? 1;
   const eq = new Set(o.equipment), excl = new Set(o.excluded), fav = new Set(o.fav), prio = new Set(o.prio);
   const injured = new Set((o.injuries || []).flatMap(k => INJ[k] || []));
-  const avail = EX.filter(e => hasNeed(e.need, eq) && !excl.has(e.id) && !injured.has(e.id));
+  const avail = EX.filter(e => hasNeed(e.need, eq) && !excl.has(e.id) && !injured.has(e.id) && !skip.has(e.m));
   const rec = recommendSplit(o);
   const splitId = o.split && SPLITS[o.split] && SPLITS[o.split].days.length === o.days ? o.split : rec.id;
   const T = weeklyTargets(o);
+  for (const m of skip) T[m] = 0;
   const D = SPLITS[splitId].days.map(([name, type]) => ({name, type, items: []}));
   const credit = Object.fromEntries(MUSCLES.map(m => [m, 0]));
   const usedWeek = {}, warnings = [];
@@ -226,6 +260,7 @@ function generate(o) {
   }
 
   for (const m of MUSCLES) {
+    if (skip.has(m)) continue;
     const dayIdx = D.map((d, i) => DAYTYPE[d.type].includes(m) ? i : -1).filter(i => i >= 0);
     if (!dayIdx.length) continue;
     let need = T[m] - credit[m];
@@ -267,6 +302,32 @@ function generate(o) {
         for (const [sm, w] of Object.entries(e.s)) credit[sm] += p * w;
       });
     });
+  }
+
+  // Ausgleich: Keine Einheit mit nur einer Übung – passende Übung von der vollsten Einheit verschieben
+  for (let guard = 0; guard < 20; guard++) {
+    const thin = D.find(d => d.items.length < 2); if (!thin) break;
+    const donors = D.filter(d => d !== thin && d.items.length > 2).sort((a, b) => b.items.length - a.items.length);
+    let moved = false;
+    for (const dn of donors) {
+      const cand = dn.items.slice().reverse().find(it => DAYTYPE[thin.type].includes(it.m) && !thin.items.some(x => x.ex === it.ex));
+      if (cand) { dn.items.splice(dn.items.indexOf(cand), 1); thin.items.push(cand); moved = true; break; }
+    }
+    if (!moved) break;
+  }
+  // Bleibt eine Einheit zu dünn (viele Tage, wenig Volumen): eine Ergänzungsübung mit 2 Sätzen für den am wenigsten versorgten Muskel
+  for (const d of D) {
+    let g = 0;
+    while (d.items.length < 2 && g++ < 4) {
+      const used = new Set(d.items.map(it => it.ex));
+      const ms = DAYTYPE[d.type].filter(m => !skip.has(m) && T[m] > 0 && avail.some(e => e.m === m && !used.has(e.id)))
+        .sort((a, b) => credit[a] / T[a] - credit[b] / T[b]);
+      if (!ms.length) break;
+      const m = ms[0], pats = poolFor(m, 1)[0];
+      const cand = avail.filter(e => e.m === m && !used.has(e.id)).sort((a, b) => score(a, pats, 1, d) - score(b, pats, 1, d));
+      const e = cand[0]; usedWeek[e.id] = (usedWeek[e.id] || 0) + 1;
+      d.items.push({ex: e.id, m, sets: 2, role: 1, exp: 0}); credit[m] += 2;
+    }
   }
 
   // Vorgaben setzen, Kraft: Hauptübungen schwer/leicht im Wechsel
@@ -476,6 +537,6 @@ function nextDay(plan, workouts) {
   return (done[0].planDay + 1) % plan.days.length;
 }
 
-const API = {MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor};
+const API = {LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
