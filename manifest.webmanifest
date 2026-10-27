@@ -5,7 +5,7 @@
   "description": "Ernährung mit Barcode-Scanner, Trainingsplan aus deinem Studio-Equipment und Trainingslog mit RIR",
   "lang": "de",
   "dir": "ltr",
-  "start_url": "./",
+  "start_url": "./#home",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -13,8 +13,8 @@
     "minimal-ui"
   ],
   "orientation": "portrait",
-  "background_color": "#EDEFEB",
-  "theme_color": "#EDEFEB",
+  "background_color": "#060A16",
+  "theme_color": "#060A16",
   "categories": [
     "health",
     "fitness",
