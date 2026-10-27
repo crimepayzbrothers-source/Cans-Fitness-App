@@ -74,7 +74,7 @@ h3{font-size:19px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-weight:600;font-size:14px;min-height:36px}
 .chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-input[type=text],input[type=number],input[type=search],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}
+input[type=text],input[type=number],input[type=search],input[type=password],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;min-height:44px}
 textarea{min-height:70px;resize:vertical}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted);font-weight:500}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -202,6 +202,12 @@ details.more summary::-webkit-details-marker{display:none}
 .tag.warn{background:transparent;border:1px solid var(--warn);color:var(--warn)}
 .tag.acc{background:transparent;border:1px solid var(--accent);color:var(--accent)}
 .daymini{font-size:14px;color:var(--muted)}
+.aiimg{width:100%;max-height:220px;object-fit:cover;border-radius:12px;display:block}
+.airow{display:flex;flex-direction:column;gap:8px;padding:12px}
+.airow input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.airow.off{opacity:.5}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);font-weight:600;text-decoration:underline}
+.seg button{font-size:14px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(12px + env(safe-area-inset-top,0px));z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;max-width:calc(100% - 32px);box-shadow:0 6px 20px rgba(0,0,0,.25)}
 .chart{width:100%;overflow-x:auto}
 .chart svg{display:block;width:100%;height:auto}
@@ -233,10 +239,13 @@ details.more summary::-webkit-details-marker{display:none}
 <div id="toast" hidden></div>
 <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
 <input type="file" id="labelIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="aiCamIn" accept="image/*" capture="environment" hidden>
+<input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script src="planner.js"></script>
+<script src="ai.js"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -364,10 +373,11 @@ function vFood(){
    <div class="c"><div class="big">${fmt(Math.abs(rest))}</div><div class="small muted">${rest<0?"kcal drüber":"kcal übrig"}</div></div></div>
   <div class="stack" style="gap:9px;min-width:0"><div class="small muted"><span class="num" style="color:var(--ink);font-size:18px">${fmt(t.kcal)}</span> von ${fmt(T.kcal)} kcal gegessen</div>${mb("p","Eiweiß","--p")}${mb("c","Kohlenhydrate","--c")}${mb("f","Fett","--f")}</div>
  </div>
- <div class="row"><button class="btn primary grow" data-act="scanNow">${scanIcon(18)} Barcode scannen</button><button class="btn grow" data-act="add" data-m="${defaultMeal()}">Suchen</button></div>
+ <div class="row"><button class="btn primary grow" data-act="scanNow">${scanIcon(18)} Barcode</button><button class="btn primary grow" data-act="photoNow">${camIcon(18)} Foto</button><button class="btn grow" data-act="add" data-m="${defaultMeal()}">Suchen</button></div>
  ${meals}</div>`;
 }
 function defaultMeal(){const h=new Date().getHours();return h<10?"fruehstueck":h<15?"mittag":h<20?"abend":"snacks"}
+const camIcon=(s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>`;
 const scanIcon=(s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>`;
 
 function vGym(){
@@ -529,7 +539,7 @@ function addSheet(meal,tab){
  SH={meal,tab:tab||"search"};
  const mealSel=`<select id="mealSel" aria-label="Mahlzeit">${MEALS.map(m=>`<option value="${m.id}" ${m.id===meal?"selected":""}>${m.n}</option>`).join("")}</select>`;
  openSheet(`${sheetHd("Hinzufügen")}<div class="stack">${mealSel}
- <div class="seg" role="tablist"><button class="${SH.tab==="search"?"on":""}" data-act="tab" data-t="search">Suchen</button><button class="${SH.tab==="scan"?"on":""}" data-act="tab" data-t="scan">Scannen</button><button class="${SH.tab==="new"?"on":""}" data-act="tab" data-t="new">Neu anlegen</button></div>
+ <div class="seg" role="tablist"><button class="${SH.tab==="search"?"on":""}" data-act="tab" data-t="search">Suchen</button><button class="${SH.tab==="scan"?"on":""}" data-act="tab" data-t="scan">Scannen</button><button class="${SH.tab==="photo"?"on":""}" data-act="tab" data-t="photo">Foto</button><button class="${SH.tab==="new"?"on":""}" data-act="tab" data-t="new">Neu</button></div>
  <div id="tabBody"></div></div>`,SH);
  renderTab();
 }
@@ -539,6 +549,7 @@ function renderTab(prefill){
  else if(SH.tab==="scan"){b.innerHTML=`<div class="live" id="liveBox" hidden><video id="liveVid" playsinline muted autoplay></video><div class="aim"></div><button class="stop" data-act="stopLive">Stopp</button></div>
   <div class="scanbox" id="scanStart">${scanIconBig()}<div><b>Barcode scannen</b><div class="small muted">Halte den Barcode in den Rahmen. Die Nährwerte kommen von Open Food Facts.</div></div><button class="btn primary" data-act="liveScan">Kamera starten</button><button class="btn sm ghost" data-act="pickCam">Stattdessen Foto aufnehmen</button></div>
   <div class="row"><input type="text" inputmode="numeric" id="codeIn" placeholder="Barcode eintippen" aria-label="Barcode eintippen"><button class="btn" data-act="codeGo">Suchen</button></div><div id="scanStat"></div>`}
+ else if(SH.tab==="photo"){b.innerHTML=photoTab();if(SH.ai&&SH.ai.result)updAiTot()}
  else{b.innerHTML=productForm(prefill||{})}
 }
 function renderSearch(q){const r=$("#res");if(!r)return;q=q.trim().toLowerCase();
@@ -642,6 +653,63 @@ $("#labelIn").addEventListener("change",async e=>{const f=e.target.files[0];e.ta
   if(st)st.innerHTML=`<div class="status">Werte eingetragen. Bitte kurz mit der Packung vergleichen.</div>`;
  }catch(err){if(st)st.innerHTML=`<div class="status err">${err&&err.code==="not_granted"?"Zugriff auf Claude wurde nicht erlaubt.":err&&err.code==="rate_limited"?"Gerade zu viele Anfragen. Gleich noch mal versuchen.":"Konnte die Tabelle nicht lesen. Bitte Werte eintippen."}</div>`}
 });
+
+/* ---------- KI-Foto-Analyse ---------- */
+function aiCfg(){try{return JSON.parse(localStorage.getItem("et-ai")||"null")}catch(e){return null}}
+function setAiCfg(c){try{if(c)localStorage.setItem("et-ai",JSON.stringify(c));else localStorage.removeItem("et-ai")}catch(e){}}
+function photoTab(){
+ const cfg=aiCfg();
+ if(!cfg||!cfg.key||SH.aiSetup){
+  const sel=SH.aiProv||(cfg&&cfg.provider)||"gemini",PV=AI.PROVIDERS[sel],same=cfg&&cfg.provider===sel;
+  return`<div class="stack"><div class="small muted">Fotografiere dein Essen. Die KI erkennt die Lebensmittel, schätzt die Mengen und berechnet die Nährwerte. Dafür brauchst du einen eigenen API-Schlüssel bei einem Anbieter.</div>
+  <div class="opts">${Object.entries(AI.PROVIDERS).map(([id,p])=>`<button class="opt ${sel===id?"on":""}" data-act="aiProv" data-v="${id}"><b>${p.name}</b><span>${esc(p.note)}</span></button>`).join("")}</div>
+  <a href="${PV.keyUrl}" target="_blank" rel="noopener">API-Schlüssel bei ${PV.name} erstellen ↗</a>
+  <label class="f">API-Schlüssel<input type="password" id="aiKey" autocomplete="off" value="${esc(SH.aiKeyDraft||"")}" placeholder="${same?"gespeichert – leer lassen zum Behalten":"hier einfügen"}"></label>
+  <details class="more"><summary>Erweitert: Modell</summary><label class="f">Modellname<input type="text" id="aiModel" value="${esc(same&&cfg.model?cfg.model:PV.model)}"></label><div class="small muted">Standard: ${PV.model}. Nur ändern, wenn der Anbieter das Modell umbenannt hat oder du ein genaueres nutzen willst.</div></details>
+  <button class="btn primary block" data-act="aiSave">Speichern und testen</button><div id="aiStat"></div>
+  ${cfg&&cfg.key?`<div class="row"><button class="btn ghost grow" data-act="aiBack">Abbrechen</button><button class="btn danger grow" data-act="aiDel">Schlüssel löschen</button></div>`:""}
+  <div class="small muted">Der Schlüssel bleibt nur auf diesem Gerät. Er steht weder in der Sicherung noch auf GitHub.</div></div>`;
+ }
+ if(SH.ai&&SH.ai.result){
+  const R=SH.ai.result;
+  return`<div class="stack"><img class="aiimg" src="${SH.ai.img}" alt="Dein Foto">
+  ${R.notes?`<div class="hint">${esc(R.notes)}</div>`:""}
+  ${R.items.length?R.items.map((it,i)=>`<div class="card airow ${it.on?"":"off"}" data-i="${i}">
+   <label class="row"><input type="checkbox" data-ai="on" ${it.on?"checked":""} aria-label="${esc(it.name)} eintragen"><b class="grow">${esc(it.name)}</b><span class="tag ${it.conf==="niedrig"?"warn":""}">${it.conf==="hoch"?"sicher":it.conf==="niedrig"?"unsicher":"geschätzt"}</span></label>
+   <div class="row"><label class="f" style="width:7.5em">Menge (g)<input type="number" inputmode="decimal" id="aig${i}" data-ai="grams" value="${it.grams}"></label><div class="grow" style="text-align:right"><div class="num" style="font-size:22px" id="aik${i}"></div><div class="mdots" id="aim${i}"></div></div></div></div>`).join("")
+   :`<div class="empty small">Auf dem Foto wurde kein Essen erkannt. Versuch es mit einem neuen Foto von schräg oben.</div>`}
+  ${R.items.length?`<div class="card row" id="aiTot"></div><button class="btn primary block" data-act="aiAdd">Eintragen</button>`:""}
+  <button class="btn ghost block" data-act="aiRetry">Neues Foto</button>
+  <div class="small muted">KI-Schätzungen liegen oft 20–30 % daneben, vor allem bei Öl, Soßen und versteckten Zutaten. Prüf die Mengen; mit einer Küchenwaage wird es genau.</div></div>`;
+ }
+ return`<div class="stack"><div class="scanbox"><svg viewBox="0 0 64 48" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14h10l4-6h20l4 6h10v28H8z"/><circle cx="32" cy="27" r="9"/></svg>
+  <div><b>Mahlzeit fotografieren</b><div class="small muted">Schräg von oben, ganzer Teller im Bild, gutes Licht. Besteck daneben hilft beim Schätzen der Größe.</div></div>
+  <div class="row"><button class="btn primary" data-act="aiCam">Kamera</button><button class="btn ghost" data-act="aiGal">Aus Galerie</button></div></div>
+ <label class="f">Hinweise für die KI (optional)<input type="text" id="aiHint" value="${esc(SH.aiHint||"")}" placeholder="z. B. 200 g Reis, in Olivenöl gebraten"></label>
+ <div id="aiStat"></div>
+ <div class="small muted">Analyse mit ${AI.PROVIDERS[cfg.provider].name}. <button class="linkbtn" data-act="aiSetup">Anbieter ändern</button></div></div>`;
+}
+function aiStat(html,err){const s=$("#aiStat");if(s)s.innerHTML=html?`<div class="status ${err?"err":""}">${html}</div>`:""}
+function updAiTot(){if(!SH||!SH.ai||!SH.ai.result)return;const t={kcal:0,p:0,c:0,f:0};SH.ai.result.items.forEach((it,i)=>{const k=it.grams/100;const kc=$("#aik"+i),mm=$("#aim"+i);if(kc)kc.textContent=fmt(it.kcal*k)+" kcal";if(mm)mm.innerHTML=`<span class="p">${fmt(it.p*k,1)} P</span><span class="c">${fmt(it.c*k,1)} KH</span><span class="f">${fmt(it.f*k,1)} F</span>`;if(it.on){t.kcal+=it.kcal*k;t.p+=it.p*k;t.c+=it.c*k;t.f+=it.f*k}});const el=$("#aiTot");if(el)el.innerHTML=`<div class="grow"><div class="lbl">Summe</div><div class="num" style="font-size:28px">${fmt(t.kcal)} kcal</div></div><div class="mdots"><span class="p">${fmt(t.p)} P</span><span class="c">${fmt(t.c)} KH</span><span class="f">${fmt(t.f)} F</span></div>`}
+async function runAi(file){
+ const cfg=aiCfg();if(!cfg||!file)return;
+ if(!SH||SH.tab!=="photo")addSheet((SH&&SH.meal)||defaultMeal(),"photo");
+ const h=$("#aiHint");if(h)SH.aiHint=h.value.trim();
+ let img;
+ try{const c=await downscale(file,1024);img=c.toDataURL("image/jpeg",.82)}catch(e){aiStat("Das Foto konnte nicht gelesen werden.",true);return}
+ aiStat(`<img class="aiimg" src="${img}" alt="" style="margin-bottom:8px">Analysiere mit ${AI.PROVIDERS[cfg.provider].name} … das dauert meist 5–20 Sekunden.`);
+ const run=SH.aiRun=uid();
+ try{
+  const r=await AI.analyzeMeal(cfg,img.split(",")[1],SH.aiHint||"");
+  if(!SH||SH.aiRun!==run)return;
+  r.items.forEach(it=>it.on=true);SH.ai={result:r,img};renderTab();
+ }catch(e){
+  if(!SH||SH.aiRun!==run)return;
+  aiStat(esc(e.message||"Analyse fehlgeschlagen.")+(e.code==="auth"||e.code==="model"?` <button class="linkbtn" data-act="aiSetup">Einstellungen öffnen</button>`:e.code==="parse"?" Versuch es noch einmal.":""),true);
+ }
+}
+$("#aiCamIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";runAi(f)});
+$("#aiGalIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";runAi(f)});
 
 /* ---------- plan wizard ---------- */
 const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];
@@ -792,6 +860,26 @@ document.addEventListener("click",e=>{
  case"scanNow":addSheet(defaultMeal(),"scan");startLiveScan();break;
  case"tab":stopLiveScan();SH.tab=d.t;document.querySelectorAll(".seg button").forEach(x=>x.classList.toggle("on",x.dataset.t===d.t));renderTab();break;
  case"pickCam":stopLiveScan();$("#camIn").click();break;
+ case"photoNow":{addSheet(defaultMeal(),"photo");const c=aiCfg();if(c&&c.key)$("#aiCamIn").click();break}
+ case"aiCam":$("#aiCamIn").click();break;
+ case"aiGal":$("#aiGalIn").click();break;
+ case"aiRetry":SH.ai=null;renderTab();break;
+ case"aiSetup":SH.aiSetup=true;SH.ai=null;renderTab();break;
+ case"aiBack":SH.aiSetup=false;SH.aiKeyDraft="";renderTab();break;
+ case"aiProv":{const k=$("#aiKey");SH.aiKeyDraft=k?k.value:"";SH.aiProv=d.v;renderTab();break}
+ case"aiDel":setAiCfg(null);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Schlüssel gelöscht");break;
+ case"aiSave":case"aiSaveForce":{const old=aiCfg();const prov=SH.aiProv||(old&&old.provider)||"gemini";let key=($("#aiKey")||{}).value||SH.aiKeyDraft||"";key=key.trim();if(!key&&old&&old.provider===prov)key=old.key;
+  if(!key){aiStat("Bitte den API-Schlüssel einfügen.",true);break}
+  const cfg={provider:prov,key,model:(($("#aiModel")||{}).value||"").trim()||AI.PROVIDERS[prov].model};
+  if(a==="aiSaveForce"){setAiCfg(cfg);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Gespeichert");break}
+  SH.aiKeyDraft=key;b.disabled=true;aiStat("Teste die Verbindung …");
+  AI.testConnection(cfg).then(()=>{setAiCfg(cfg);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Verbindung klappt. Du kannst jetzt fotografieren.")})
+   .catch(e=>{b.disabled=false;aiStat(esc(e.message||"Test fehlgeschlagen.")+` <button class="linkbtn" data-act="aiSaveForce">Trotzdem speichern</button>`,true)});
+  break}
+ case"aiAdd":{const R=SH.ai&&SH.ai.result;if(!R)break;const meal=($("#mealSel")||{}).value||SH.meal;const day=ensureDay(UI.date);let n=0;
+  R.items.filter(it=>it.on&&it.grams>0).forEach(it=>{day.meals[meal].push({pid:"ai:"+uid(),name:it.name,g:it.grams,kcal:it.kcal,p:it.p,c:it.c,f:it.f,src:"ai"});n++});
+  if(!n){toast("Nichts ausgewählt.");break}
+  persist("days/"+UI.date);closeSheet();render();toast(`${n} ${n===1?"Eintrag":"Einträge"} aus dem Foto hinzugefügt`);break}
  case"liveScan":startLiveScan();break;
  case"stopLive":stopLiveScan();scanStat("");break;
  case"offSearch":offSearch(($("#q")||{}).value||"");break;
@@ -864,12 +952,13 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("input",e=>{
  const t=e.target;
+ if(t.dataset&&t.dataset.ai==="grams"&&SH&&SH.ai){const i=+t.closest(".airow").dataset.i;SH.ai.result.items[i].grams=num(t.value)||0;updAiTot();return}
  if(t.id==="q")renderSearch(t.value);
  else if(t.id==="amt")updAmt();
  else if(t.id==="exQ"){const q=t.value.trim().toLowerCase();document.querySelectorAll("#exRes .li").forEach(li=>li.hidden=!!q&&!li.dataset.s.includes(q));document.querySelectorAll("#exRes .lbl").forEach(l=>l.hidden=!!q)}
  else if(t.dataset.w&&M.active){const row=t.closest(".setrow");const s=M.active.exercises[+row.dataset.ei].sets[+row.dataset.si];s[t.dataset.w]=num(t.value);persist("main")}
 });
-document.addEventListener("change",e=>{if(e.target.id==="statsEx"){UI.statsEx=e.target.value;render()}if(e.target.id==="itKg"&&SH&&SH.di!=null){const it=M.plan.days[SH.di].items[SH.ii];it.kg=num(e.target.value);persist("main");render()}});
+document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.ai==="on"&&SH&&SH.ai){const row=e.target.closest(".airow");const it=SH.ai.result.items[+row.dataset.i];it.on=e.target.checked;row.classList.toggle("off",!it.on);updAiTot()}if(e.target.id==="statsEx"){UI.statsEx=e.target.value;render()}if(e.target.id==="itKg"&&SH&&SH.di!=null){const it=M.plan.days[SH.di].items[SH.ii];it.kg=num(e.target.value);persist("main");render()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheetwrap").hidden)closeSheet();if(e.key==="Enter"&&e.target.id==="codeIn")handleCode(e.target.value);if(e.key==="Enter"&&e.target.id==="q")offSearch(e.target.value)});
 
 /* ---------- backup ---------- */
