@@ -1,5 +1,5 @@
 // Cans Fitness App – Offline-Cache. Bei Änderungen an der App die Versionsnummer erhöhen.
-const CACHE = "et-v14";
+const CACHE = "et-v15";
 const SHELL = ["./", "./index.html", "./planner.js?v=14", "./ai.js?v=14", "./figure.js?v=14", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png"];
 
 self.addEventListener("install", e => {

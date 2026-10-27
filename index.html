@@ -573,7 +573,7 @@ function vHomeOld(){
  const T=targets(),t=dayTotals(today());
  let hero;
  if(M.active){const A=M.active;hero=`<div class="card hero">${bodySvg(new Set(A.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)))}<div class="txt"><div class="lbl">Training läuft</div><h2>${esc(A.dayName)}</h2><div class="small muted">${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} Sätze erledigt</div></div><a class="btn glow block" href="#training" style="position:relative">Weiter trainieren →</a></div>`}
- else if(P){const ps=planState(),nd=PL.nextDay(P,Object.values(WORKOUTS)),day=P.days[nd],its=day.items.map(it=>itemView(it,ps));
+ else if(P){const ps=planState(),nd=upcoming(P).di,day=P.days[nd],its=day.items.map(it=>itemView(it,ps));
   const ms=[...new Set(day.items.map(it=>(EXMAP[it.ex]||{}).m).filter(Boolean))];
   const rir=its.length?its.reduce((s,it)=>s+it.rir,0)/its.length:2;const inten=ps&&ps.deload?"Deload":rir<=1.2?"Hohe Intensität":rir<=2.2?"Mittlere Intensität":"Moderate Intensität";
   hero=`<div class="card hero">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">Heutiges Training</div><h2>${esc(day.name)}</h2><div class="small muted">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div></div>
@@ -650,7 +650,7 @@ function vPlanOld(){
  if(P.v!==2)return`<div class="section"><h2>${esc(P.name)}</h2>
   <div class="banner warn"><div class="grow">Dieser Plan stammt vom alten Planer. Der neue Planer plant Wochensätze pro Muskel, Pausen, Zyklen und passt sich nach jedem Training an.</div></div>
   <button class="btn primary block" data-act="gen">Mit neuem Planer erstellen</button>${oldDays(P)}</div>`;
- const st=planState(),o=P.opts||{},nd=PL.nextDay(P,Object.values(WORKOUTS)),vol=PL.weeklyVolume(P.days);
+ const st=planState(),o=P.opts||{},nd=upcoming(P).di,vol=PL.weeklyVolume(P.days);
  const pains=[];P.days.forEach((d,di)=>d.items.forEach((it,ii)=>{if(it.pain)pains.push({di,ii,it})}));
  const wk=st?Array.from({length:st.len},(_,i)=>`<i class="${i===st.len-1?"dl":""} ${i<=st.week?"on":""}"></i>`).join(""):"";
  return`<div class="section">
@@ -688,7 +688,7 @@ function vTrain(){
  const A=M.active;
  if(!A){
   const recent=Object.values(WORKOUTS).sort((a,b)=>b.start-a.start).slice(0,4);
-  const P=M.plan,v2=P&&P.v===2,st=v2?planState():null,nd=P?PL.nextDay(P,Object.values(WORKOUTS)):0,gap=daysSinceLast();
+  const P=M.plan,v2=P&&P.v===2,st=v2?planState():null,nd=P?upcoming(P).di:0,gap=daysSinceLast();
   return`<div class="section"><h2>Training</h2>
   ${P?`${gap>10&&recent.length?`<div class="banner warn"><div class="grow">Deine letzte Einheit ist ${Math.round(gap)} Tage her. Heute schlägt die App ca. 10 % weniger Gewicht vor.</div></div>`:""}
    ${st&&st.deload?`<div class="banner good"><div class="grow">Deload-Woche: halbe Sätze und mehr Wiederholungen im Tank. So erholst du dich für den nächsten Zyklus.</div></div>`:""}
@@ -1067,7 +1067,7 @@ function newExEntry(exId,target){
  const st=planState();const level=(M.plan&&M.plan.opts&&M.plan.opts.level)||"int";
  const rec=PL.recommend(exId,target,exHistory(exId),{level,deload:!!(st&&st.deload&&target),longBreak:daysSinceLast()>10&&Object.keys(WORKOUTS).length>0,kg:target&&target.kg});
  const L=lastSets(exId);const n=target?target.sets:3;const sets=[];
- for(let i=0;i<n;i++){const ls=L&&L.sets[Math.min(i,L.sets.length-1)];sets.push({kg:rec&&rec.kg!=null?rec.kg:(ls?ls.kg:null),reps:null,rir:null,done:false})}
+ for(let i=0;i<n;i++){const ls=L&&L.sets[Math.min(i,L.sets.length-1)];sets.push({kg:rec&&rec.kg!=null?rec.kg:(ls?ls.kg:null),reps:null,rir:target&&target.rir!=null?target.rir:null,done:false})}
  return{ex:exId,target:target||null,sets,rec}
 }
 function startWorkout(di){
@@ -1080,7 +1080,7 @@ function startWorkout(di){
 function finishWorkout(){
  const A=M.active;const exercises=A.exercises.map(e=>({ex:e.ex,target:e.target,sets:e.sets.filter(s=>s.done||(s.reps!=null&&s.reps!=="")).map(s=>({kg:num(s.kg)||0,reps:num(s.reps)||0,rir:s.rir}))})).filter(e=>e.sets.length);
  if(!exercises.length){openConfirm("Noch kein Satz eingetragen. Training trotzdem beenden?","Beenden ohne Speichern",()=>{M.active=null;persist("main");stopRest();render()});return}
- const w={id:A.id,date:A.date,start:A.start,end:Date.now(),dayName:A.dayName,planDay:A.planDay,planId:A.planId,deload:!!A.deload,exercises};WORKOUTS[A.id]=w;M.active=null;persist("workouts/"+A.id,true);persist("main",true);stopRest();
+ const w={id:A.id,date:A.date,start:A.start,end:Date.now(),dayName:A.dayName,planDay:A.planDay,planId:A.planId,deload:!!A.deload,exercises};WORKOUTS[A.id]=w;M.active=null;saveWorkingWeights(w);persist("workouts/"+A.id,true);persist("main",true);stopRest();
  try{wakeLock&&wakeLock.release()}catch(e){}
  render();
  const msg=`Gespeichert: ${exercises.reduce((s,e)=>s+e.sets.length,0)} Sätze, ${fmt(volume(w))} kg Volumen`;
@@ -1154,7 +1154,35 @@ const segBar=(cur,items,act)=>`<div class="seg">${items.map(([k,l])=>`<button cl
 const pageHd=(title,right,back)=>`<div class="pagehd">${back?`<a class="iconbtn" href="${back}" aria-label="Zurück">${svgI.back}</a>`:""}<h1 class="grow">${title}</h1>${right||""}</div>`;
 function intensityTxt(items){if(!items.length)return"–";const r=items.reduce((s,it)=>s+(it.rir??2),0)/items.length;return r<=1.2?"Hohe Intensität":r<=2.2?"Mittlere Intensität":"Moderate Intensität"}
 function dayMuscles(day){return[...new Set(day.items.map(it=>(EXMAP[it.ex]||{}).m).filter(Boolean))]}
-function weekdayOf(P,di){const wd=P&&P.opts&&P.opts.weekdays;return wd&&wd.length===P.days.length?wd.slice().sort((a,b)=>a-b)[di]:null}
+/* ---------- Wochenplanung: feste Tage, pro Woche verschiebbar ---------- */
+function baseWD(P){if(P.dayWD&&P.dayWD.length===P.days.length)return P.dayWD.slice();const wd=((P.opts&&P.opts.weekdays)||[]).slice().sort((a,b)=>a-b);return P.days.map((_,i)=>wd.length===P.days.length?wd[i]:null)}
+function schedule(P,wk){if(!P)return[];const b=baseWD(P);const mv=(P.moves||{})[wk||isoWeekKey()]||{};return b.map((w,i)=>mv[i]!=null?mv[i]:w)}
+function doneThisWeek(P){const wk=weekStartISO();return new Set(Object.values(WORKOUTS).filter(w=>w.date>=wk&&w.planId===P.id&&w.planDay!=null).map(w=>w.planDay))}
+function upcoming(P){
+ const sc=schedule(P),done=doneThisWeek(P),tw=todayWD();
+ const c=P.days.map((_,i)=>({di:i,wd:sc[i]})).filter(x=>x.wd!=null&&!done.has(x.di)&&x.wd>=tw).sort((a,b)=>a.wd-b.wd);
+ if(c.length)return{di:c[0].di,wd:c[0].wd,today:c[0].wd===tw};
+ const nd=PL.nextDay(P,Object.values(WORKOUTS));return{di:nd,wd:sc[nd],today:false,rot:true};
+}
+function weekdayOf(P,di){return schedule(P)[di]??null}
+function moveSheet(di){
+ const P=M.plan;if(!P)return;SH=Object.assign({},{move:di,perm:SH&&SH.move===di?SH.perm:false});
+ const sc=schedule(P),tw=todayWD(),done=doneThisWeek(P),cur=sc[di];
+ openSheet(`${sheetHd("Verschieben: "+esc(P.days[di].name))}<div class="stack">
+ <div class="seg"><button class="${SH.perm?"":"on"}" data-act="movePerm" data-v="0">Nur diese Woche</button><button class="${SH.perm?"on":""}" data-act="movePerm" data-v="1">Dauerhaft</button></div>
+ <div class="small muted">${SH.perm?"Ändert den festen Wochentag dieser Einheit für alle kommenden Wochen.":"Gilt nur für diese Woche. Nächste Woche gilt wieder dein normaler Plan."} Ist der Tag schon belegt, tauschen die beiden Einheiten.</div>
+ <div class="opts">${WD.map((d,i)=>{const occ=sc.findIndex((w,j)=>w===i&&j!==di);const past=!SH.perm&&i<tw;const lab=["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][i];
+  return`<button class="opt ${i===cur?"on":""}" data-act="moveTo" data-v="${i}" ${past||i===cur?"disabled":""} style="${past?"opacity:.4":""}"><b>${lab}${i===tw&&!SH.perm?" (heute)":""}</b><span>${i===cur?"aktueller Tag":occ>=0?"belegt: "+esc(P.days[occ].name)+(done.has(occ)&&!SH.perm?" (erledigt)":"")+" → wird getauscht":"frei"}</span></button>`}).join("")}</div></div>`,SH);
+}
+function moveTo(t){
+ const P=M.plan,di=SH.move,sc=schedule(P),from=sc[di],other=sc.findIndex((w,j)=>w===t&&j!==di),lab=WD[t];
+ if(SH.perm){const b=baseWD(P).map((w,i)=>w==null?Math.min(6,i):w);const o2=b.findIndex((w,j)=>w===t&&j!==di);if(o2>=0)b[o2]=b[di];b[di]=t;P.dayWD=b;P.opts.weekdays=[...new Set(b)].sort((a,c)=>a-c);
+  (P.log=P.log||[]).unshift({d:today(),t:`${P.days[di].name} dauerhaft auf ${lab} verlegt${o2>=0?`, ${P.days[o2].name} getauscht`:""}`})}
+ else{const wk=isoWeekKey();P.moves=P.moves||{};const mv=P.moves[wk]=P.moves[wk]||{};if(other>=0)mv[other]=from;mv[di]=t;
+  Object.keys(P.moves).sort().slice(0,-6).forEach(k=>delete P.moves[k]);
+  (P.log=P.log||[]).unshift({d:today(),t:`${P.days[di].name} diese Woche auf ${lab} verschoben${other>=0?`, ${P.days[other].name} auf ${from!=null?WD[from]:"–"}`:""}`})}
+ persist("main");closeSheet();render();toast(`${P.days[di].name} → ${lab}`);
+}
 const todayWD=()=>(new Date().getDay()+6)%7;
 function bestSet(exId){let best=null;Object.values(WORKOUTS).forEach(w=>(w.exercises||[]).forEach(e=>{if(e.ex!==exId)return;e.sets.forEach(s=>{const v=PL.e1rm(s);if(v>0&&(!best||v>best.v))best={v,kg:s.kg,reps:s.reps,date:w.date}})}));return best}
 function streakDays(){const ws=Object.values(WORKOUTS);const active=x=>ws.some(w=>w.date===x)||dayTotals(x).kcal>0;let n=0,d=today();if(!active(d))d=shiftDate(d,-1);let g=0;while(active(d)&&g++<800){n++;d=shiftDate(d,-1)}return n}
@@ -1189,13 +1217,13 @@ function vHome(){
  const name=(M.profile&&M.profile.name)||"Can";
  const C=2*Math.PI*52,pct=Math.min(1,st.done/(st.goal||1));
  const wk=weekStartISO(),doneDays=new Set(Object.values(WORKOUTS).filter(w=>w.date>=wk).map(w=>(new Date(w.date+"T12:00:00").getDay()+6)%7));
- const planned=new Set((P&&P.opts&&P.opts.weekdays)||[]);
+ const planned=new Set(P?schedule(P).filter(x=>x!=null):[]);
  const dots=WD.map((d,i)=>`<div class="wdot ${doneDays.has(i)?"done":planned.has(i)?"plan":""} ${i===todayWD()?"today":""}"><i>${doneDays.has(i)?svgI.check:""}</i><span>${d}</span></div>`).join("");
  let hero;
  if(M.active){const A=M.active;hero=`<div class="card hero">${bodySvg(new Set(A.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)))}<div class="txt"><div class="lbl">Training läuft</div><h2>${esc(A.dayName)}</h2><div class="small muted">${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} von ${A.exercises.reduce((s,e)=>s+e.sets.length,0)} Sätzen erledigt</div></div><a class="btn glow block" href="#training">Weiter trainieren →</a></div>`}
- else if(P){const ps=planState(),nd=PL.nextDay(P,Object.values(WORKOUTS)),day=P.days[nd],its=day.items.map(it=>itemView(it,ps)),ms=dayMuscles(day);
-  hero=`<div class="card hero" data-act="dayOpen" data-d="${nd}">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">Heutiges Training</div><h2>${esc(day.name)}</h2><div class="small muted">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div></div>
-  <div class="meta"><span>${svgI.list} ${day.items.length} Übungen</span><span>${svgI.clock} ${P.v===2?PL.estMinutes(its):"–"} Min</span><span>${svgI.bolt} ${ps&&ps.deload?"Deload":intensityTxt(its)}</span></div>
+ else if(P){const ps=planState(),up=upcoming(P),nd=up.di,day=P.days[nd],its=day.items.map(it=>itemView(it,ps)),ms=dayMuscles(day);
+  hero=`<div class="card hero" data-act="dayOpen" data-d="${nd}">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${up.today?"Heutiges Training":"Als Nächstes"+(up.wd!=null?" · "+WD[up.wd]:"")}</div><h2>${esc(day.name)}</h2><div class="small muted">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div></div>
+  <div class="meta"><span>${svgI.list} ${day.items.length} Übungen</span><span>${svgI.clock} ${P.v===2?PL.estMinutes(its):"–"} Min</span><span>${svgI.bolt} ${ps&&ps.deload?"Deload":intensityTxt(its)}</span><button class="linkbtn" data-act="moveDay" data-d="${nd}">📅 Verschieben</button></div>
   <button class="btn glow block" data-act="start" data-d="${nd}">Training starten →</button></div>`}
  else hero=`<div class="card hero">${bodySvg(new Set())}<div class="txt"><div class="lbl">Heutiges Training</div><h2>Noch kein Plan</h2><div class="small muted">Erstelle in 7 Schritten einen Plan, der zu deinem Studio passt.</div></div><a class="btn glow block" href="#plan">Plan erstellen →</a></div>`;
  const tile=(ic,v,l)=>`<div class="card tile"><div class="ic">${ic}</div><div style="min-width:0"><div class="v">${v}</div><div class="l">${l}</div></div></div>`;
@@ -1231,8 +1259,8 @@ function planMain(){
  const P=M.plan;
  if(!P)return`<div class="empty"><div><b>Noch kein Plan</b></div><div class="small">In 7 kurzen Schritten: Ziel, Erfahrung, Tage, Zeit, Geräte und Fokus. Der Plan verteilt die Sätze pro Muskel sinnvoll auf die Woche und passt sich an dein Training an.</div><button class="btn primary" data-act="gen">Plan erstellen</button></div>`;
  if(P.v!==2)return`<div class="banner warn"><div class="grow">Dieser Plan stammt vom alten Planer.</div></div><button class="btn primary block" data-act="gen">Mit neuem Planer erstellen</button>${oldDays(P)}`;
- const st=planState(),o=P.opts||{},nd=PL.nextDay(P,Object.values(WORKOUTS)),vol=PL.weeklyVolume(P.days);
- const wd=(o.weekdays||[]).slice().sort((a,b)=>a-b),tw=todayWD();
+ const st=planState(),o=P.opts||{},nd=upcoming(P).di,vol=PL.weeklyVolume(P.days);
+ const sc=schedule(P),wd=sc.filter(x=>x!=null),tw=todayWD(),up=upcoming(P),doneW=doneThisWeek(P);
  const wk=weekStartISO(),doneDays=new Set(Object.values(WORKOUTS).filter(w=>w.date>=wk).map(w=>(new Date(w.date+"T12:00:00").getDay()+6)%7));
  const strip=WD.map((d,i)=>`<div class="wdot ${doneDays.has(i)?"done":wd.includes(i)?"plan":""} ${i===tw?"today":""}"><span>${d}</span><i>${doneDays.has(i)?svgI.check:i===tw?String(new Date().getDate()):""}</i></div>`).join("");
  const pains=[];P.days.forEach((d,di)=>d.items.forEach((it,ii)=>{if(it.pain)pains.push({di,ii,it})}));
@@ -1241,8 +1269,8 @@ function planMain(){
  ${P.suggestDeload&&!(st&&st.deload)?`<div class="banner warn"><div class="grow">Die letzten Einheiten waren hart oder die Leistung ist gesunken. Eine Deload-Woche hilft.</div><button class="btn sm" data-act="deloadNow">Deload</button></div>`:""}
  ${pains.map(p=>`<button class="banner warn" data-act="item" data-d="${p.di}" data-i="${p.ii}" style="text-align:left;width:100%"><div class="grow">Beschwerden bei <b>${esc(EXMAP[p.it.ex].n)}</b>. Tippen zum Tauschen.</div>${svgI.chev}</button>`).join("")}
  ${(P.warnings||[]).map(w=>`<div class="banner warn"><div class="grow">${esc(w)}</div></div>`).join("")}
- <div class="daylist">${P.days.map((d,di)=>{const w=wd.length===P.days.length?wd[di]:null;const isNext=di===nd;const ms=dayMuscles(d);const its=d.items.map(it=>itemView(it,st));
-  return`<button class="dayrow ${isNext?"next":""}" data-act="dayOpen" data-d="${di}"><div class="wdl">${w!=null?WD[w]:di+1}</div>${thumb(ms)}<div class="grow" style="min-width:0">${isNext?`<div class="lbl acc">${w===tw?"Heute":"Als Nächstes"}</div>`:""}<b>${esc(d.name)}</b><div class="small muted ell">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div><div class="small muted">${d.items.length} Übungen · ${PL.estMinutes(its)} Min</div></div>${svgI.chev}</button>`}).join("")}</div>
+ <div class="daylist">${P.days.map((d,di)=>{const w=sc[di];const isNext=di===up.di&&!doneW.has(di);const ms=dayMuscles(d);const its=d.items.map(it=>itemView(it,st));
+  return`<button class="dayrow ${isNext?"next":""}" data-act="dayOpen" data-d="${di}"><div class="wdl">${w!=null?WD[w]:di+1}</div>${thumb(ms)}<div class="grow" style="min-width:0">${isNext?`<div class="lbl acc">${w===tw?"Heute":"Als Nächstes"}</div>`:doneW.has(di)?`<div class="lbl" style="color:var(--f)">Erledigt ✓</div>`:""}<b>${esc(d.name)}</b><div class="small muted ell">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div><div class="small muted">${d.items.length} Übungen · ${PL.estMinutes(its)} Min</div></div>${svgI.chev}</button>`}).join("")}</div>
  <details class="more card"><summary>Sätze pro Woche je Muskel</summary><div class="stack" style="gap:4px;padding-top:6px">
   ${PL.MUSCLES.filter(m=>(P.targets[m]||0)>0||vol[m]>=1).map(m=>{const t=P.targets[m]||0,v=vol[m],pr=(o.prio||[]).includes(m);const pct=t?Math.min(100,v/t*100):100;return`<div class="vrow"><span>${PL.MUSN[m]}${pr?" ★":""}</span><div class="bar"><i style="width:${pct}%;background:${t&&v<t*.7?"var(--warn)":"var(--accent)"}"></i></div><span class="num">${String(Math.round(v*10)/10).replace(".",",")} / ${t}</span></div>`}).join("")}</div></details>
  <details class="more card"><summary>Warum dieser Plan?</summary><div class="why"><div>${esc(P.splitWhy||"")}</div>${P.splitNote?`<div>${esc(P.splitNote)}</div>`:""}<div>Jeder Muskel bekommt eine feste Zahl harter Sätze pro Woche. Ein Zyklus dauert ${st?st.len:"4–6"} Wochen, die letzte ist ein Deload. Schaffst du überall das obere Ende der Wiederholungen, schlägt die App mehr Gewicht vor.</div></div></details>
@@ -1276,8 +1304,9 @@ function vDay(){
  const st=planState(),day=P.days[di],its=day.items.map(it=>itemView(it,st)),ms=dayMuscles(day);
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
- <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}${it.kg?` · ${fmt(it.kg,1)} kg`:""}</div></div>${svgI.chev}</button>`}).join("")}
+ <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
+ <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
  <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div></div>`;
 }
 
@@ -1353,6 +1382,15 @@ const restTxtClock=s=>String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).
 
 /* ---------- 6 Trainingsabschluss ---------- */
 const MOODS=["😣","😕","😐","🙂","😄"];
+/* Nach dem Training: Arbeitsgewicht, Wiederholungen und RIR des besten Satzes in den Plan übernehmen */
+function saveWorkingWeights(w){
+ const P=M.plan;if(!P||w.planId!==P.id||w.planDay==null||!P.days[w.planDay])return 0;let n=0;
+ for(const e of w.exercises){const it=P.days[w.planDay].items.find(x=>x.ex===e.ex);if(!it)continue;
+  const top=e.sets.filter(x=>x.reps>0).sort((a,b)=>(b.kg||0)-(a.kg||0)||b.reps-a.reps)[0];if(!top)continue;
+  it.last={kg:top.kg||0,reps:top.reps,rir:top.rir??null,date:w.date};if(!w.deload&&top.kg>0)it.kg=top.kg;n++}
+ if(n)(P.log=P.log||[]).unshift({d:today(),t:`Gewichte und RIR von ${n} Übungen gespeichert (${P.days[w.planDay].name})`});
+ return n;
+}
 function summarySheet(w){
  SH={fb:w,pain:[],feel:null,mood:null};
  const planned=M.plan&&w.planDay!=null&&M.plan.id===w.planId&&M.plan.days[w.planDay]?M.plan.days[w.planDay].items.length:w.exercises.length;
@@ -1360,7 +1398,7 @@ function summarySheet(w){
  const kcal=Math.round(5*(+M.profile.weight||80)*dur/3600);
  const its=w.exercises.flatMap(e=>e.sets.filter(s=>s.rir!=null));const avg=its.length?its.reduce((a,s)=>a+s.rir,0)/its.length:null;
  const inten=avg==null?"–":avg<=1.2?"Hoch":avg<=2.2?"Mittel":"Moderat";
- const P=M.plan,nd=P?PL.nextDay(P,Object.values(WORKOUTS)):null,ndw=P&&nd!=null?weekdayOf(P,nd):null;
+ const P=M.plan,nd=P?upcoming(P).di:null,ndw=P&&nd!=null?weekdayOf(P,nd):null;
  const tile=(v,l)=>`<div class="card tile2"><div class="v">${v}</div><div class="l">${l}</div></div>`;
  const adaptive=P&&P.v===2&&w.planId===P.id&&!w.deload;
  openSheet(`<div class="stack"><div class="donehero">${bodySvg(new Set(w.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)),null,"fig done")}<h1>Training abgeschlossen!</h1><div class="muted">Starke Leistung, ${esc((M.profile&&M.profile.name)||"Can")}!</div></div>
@@ -1563,6 +1601,9 @@ document.addEventListener("click",e=>{
  case"brange":UI.brange=d.t;render();break;
  case"calNav":UI.calM=(UI.calM||0)+(+d.n);render();break;
  case"dayOpen":location.hash="#einheit"+d.d;break;
+ case"moveDay":moveSheet(+d.d);break;
+ case"movePerm":SH.perm=d.v==="1";moveSheet(SH.move);break;
+ case"moveTo":moveTo(+d.v);break;
  case"exInfo":exInfoSheet(d.id);break;
  case"exTab":exInfoSheet(SH.exInfo,d.t);break;
  case"goLib":UI.planTab="lib";if(location.hash==="#plan")render();else location.hash="#plan";break;
