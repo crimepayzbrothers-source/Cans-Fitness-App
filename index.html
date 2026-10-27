@@ -246,8 +246,8 @@ a.btn.primary{color:var(--on-accent)}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=8"></script>
-<script src="ai.js?v=8"></script>
+<script src="planner.js?v=9"></script>
+<script src="ai.js?v=9"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -660,17 +660,34 @@ $("#labelIn").addEventListener("change",async e=>{const f=e.target.files[0];e.ta
 function aiCfg(){try{return JSON.parse(localStorage.getItem("et-ai")||"null")}catch(e){return null}}
 function setAiCfg(c){try{if(c)localStorage.setItem("et-ai",JSON.stringify(c));else localStorage.removeItem("et-ai")}catch(e){}}
 function bridgeView(){
- return`<div class="stack"><div class="small muted">Ohne API-Schlüssel: Die Analyse läuft in deiner ChatGPT-App, die App wertet nur die Antwort aus.</div>
- <div class="card stack"><div class="row"><span class="tag acc">1</span><b class="grow">Auftrag kopieren</b></div>
-  <label class="f">Hinweise (optional)<input type="text" id="aiHint" value="${esc(SH.aiHint||"")}" placeholder="z. B. 200 g Reis, in Olivenöl gebraten"></label>
-  <button class="btn primary block" data-act="brCopy">Auftrag kopieren</button><div id="brStat"></div></div>
- <div class="card stack"><div class="row"><span class="tag acc">2</span><b class="grow">In ChatGPT senden</b></div>
-  <div class="small">ChatGPT öffnen, mit <b>+</b> dein Essensfoto anhängen, den kopierten Auftrag einfügen und senden. Bei der Antwort auf das <b>Kopieren-Symbol</b> tippen.</div>
-  <a class="btn block" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT öffnen ↗</a></div>
- <div class="card stack"><div class="row"><span class="tag acc">3</span><b class="grow">Antwort einfügen</b></div>
-  <textarea id="brIn" placeholder="Antwort von ChatGPT hier einfügen"></textarea>
-  <button class="btn primary block" data-act="brParse">Auswerten</button></div>
- <button class="btn ghost block" data-act="brBack">Zurück</button></div>`;
+ const shareOk=!!(navigator.canShare&&SH.brFile&&navigator.canShare({files:[SH.brFile]}));
+ return`<div class="stack"><div class="small muted">Die Analyse läuft in deiner ChatGPT-App, mit deinem Konto und ohne API-Schlüssel. ChatGPT zeigt dir eine Tabelle und einen Datenblock zum Kopieren.</div>
+ <div class="card stack"><div class="row"><span class="tag acc">1</span><b class="grow">Foto machen</b></div>
+  ${SH.brImg?`<img class="aiimg" src="${SH.brImg}" alt="Dein Foto">`:""}
+  <div class="row"><button class="btn ${SH.brImg?"ghost":"primary"} grow" data-act="aiCam">${SH.brImg?"Neues Foto":"Kamera"}</button><button class="btn ghost grow" data-act="aiGal">Galerie</button></div>
+  <label class="f">Hinweise (optional)<input type="text" id="aiHint" value="${esc(SH.aiHint||"")}" placeholder="z. B. 200 g Reis, in Olivenöl gebraten"></label></div>
+ <div class="card stack"><div class="row"><span class="tag acc">2</span><b class="grow">An ChatGPT senden</b></div>
+  ${SH.brImg?`<button class="btn primary block" data-act="brSend">An ChatGPT senden</button>
+   <div class="small muted">${shareOk?"Im Teilen-Menü <b>ChatGPT</b> wählen. Der Auftrag ist zusätzlich kopiert: Falls ChatGPT nur das Foto übernimmt, lange ins Textfeld tippen, <b>Einfügen</b> und senden.":"Teilen wird hier nicht unterstützt: Der Auftrag wird kopiert und ChatGPT geöffnet. Hänge dort das Foto mit <b>+</b> an, füge den Auftrag ein und sende."}</div>`
+   :`<div class="small muted">Zuerst ein Foto machen.</div>`}
+  <div id="brStat"></div></div>
+ <div class="card stack"><div class="row"><span class="tag acc">3</span><b class="grow">Antwort übernehmen</b></div>
+  <div class="small">In ChatGPT beim Datenblock auf <b>Kopieren</b> tippen (oder die ganze Antwort kopieren), zurück in diese App wechseln.</div>
+  <button class="btn primary block" data-act="brPaste">Aus Zwischenablage einfügen</button>
+  <textarea id="brIn" placeholder="oder hier lange tippen → Einfügen"></textarea></div>
+ <button class="btn ghost block" data-act="brBack">${aiCfg()?"Zur automatischen Analyse":"Zurück"}</button></div>`;
+}
+async function brSetPhoto(f){
+ if(!f)return;
+ try{const c=await downscale(f,1600);const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.85));SH.brFile=new File([blob],"mahlzeit.jpg",{type:"image/jpeg"});SH.brImg=c.toDataURL("image/jpeg",.6)}
+ catch(e){toast("Das Foto konnte nicht gelesen werden.");return}
+ if(SH.tab==="photo")renderTab();
+}
+function brParse(t){
+ t=(t||"").trim();if(!t)return false;
+ try{const r=AI.normalize(AI.extractJSON(t));if(!r.items.length){toast("In der Antwort wurden keine Lebensmittel gefunden.");return false}
+  r.items.forEach(it=>it.on=true);SH.ai={result:r,img:SH.brImg||null};renderTab();return true}
+ catch(e){toast("Kein Datenblock gefunden. Bitte den json-Block aus ChatGPT kopieren.");return false}
 }
 function photoTab(){
  const cfg=aiCfg();
@@ -728,8 +745,8 @@ async function runAi(file){
   aiStat(esc(e.message||"Analyse fehlgeschlagen.")+(e.code==="auth"||e.code==="model"?` <button class="linkbtn" data-act="aiSetup">Einstellungen öffnen</button>`:e.code==="parse"?" Versuch es noch einmal.":""),true);
  }
 }
-$("#aiCamIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";runAi(f)});
-$("#aiGalIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";runAi(f)});
+$("#aiCamIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(SH&&SH.bridge)brSetPhoto(f);else runAi(f)});
+$("#aiGalIn").addEventListener("change",e=>{const f=e.target.files[0];e.target.value="";if(SH&&SH.bridge)brSetPhoto(f);else runAi(f)});
 
 /* ---------- plan wizard ---------- */
 const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];
@@ -880,18 +897,23 @@ document.addEventListener("click",e=>{
  case"scanNow":addSheet(defaultMeal(),"scan");startLiveScan();break;
  case"tab":stopLiveScan();SH.tab=d.t;document.querySelectorAll(".seg button").forEach(x=>x.classList.toggle("on",x.dataset.t===d.t));renderTab();break;
  case"pickCam":stopLiveScan();$("#camIn").click();break;
- case"photoNow":{addSheet(defaultMeal(),"photo");const c=aiCfg();if(c&&c.key)$("#aiCamIn").click();break}
+ case"photoNow":{addSheet(defaultMeal(),"photo");const c=aiCfg();let mode="";try{mode=localStorage.getItem("et-ai-mode")||""}catch(e){}
+  if(mode==="chatgpt"||!(c&&c.key)){SH.bridge=true;renderTab()}$("#aiCamIn").click();break}
  case"aiCam":$("#aiCamIn").click();break;
  case"aiGal":$("#aiGalIn").click();break;
  case"aiRetry":SH.ai=null;renderTab();break;
- case"aiBridge":SH.bridge=true;SH.ai=null;SH.aiSetup=false;renderTab();break;
- case"brBack":SH.bridge=false;renderTab();break;
- case"brCopy":{const h=$("#aiHint");SH.aiHint=h?h.value.trim():"";const txt=AI.prompt(SH.aiHint);const st=$("#brStat");
-  const fallback=()=>{if(st){st.innerHTML=`<div class="small muted">Kopieren hat nicht geklappt. Text markieren und kopieren:</div><textarea readonly id="brTxt" style="min-height:120px">${esc(txt)}</textarea>`;const t=$("#brTxt");try{t.focus();t.select()}catch(e){}}};
-  try{navigator.clipboard.writeText(txt).then(()=>{if(st)st.innerHTML='<div class="status">Kopiert. Jetzt ChatGPT öffnen.</div>'},fallback)}catch(e){fallback()}break}
- case"brParse":{const t=(($("#brIn")||{}).value||"").trim();if(!t){toast("Bitte die Antwort von ChatGPT einfügen.");break}
-  try{const r=AI.normalize(AI.extractJSON(t));if(!r.items.length){toast("In der Antwort wurden keine Lebensmittel gefunden.");break}r.items.forEach(it=>it.on=true);SH.ai={result:r,img:null};renderTab()}
-  catch(e){toast("Die Antwort hatte nicht das erwartete Format. Bitte die komplette Antwort kopieren.")}break}
+ case"aiBridge":SH.bridge=true;SH.ai=null;SH.aiSetup=false;try{localStorage.setItem("et-ai-mode","chatgpt")}catch(e){}renderTab();break;
+ case"brBack":SH.bridge=false;try{localStorage.removeItem("et-ai-mode")}catch(e){}renderTab();break;
+ case"brSend":{const h=$("#aiHint");SH.aiHint=h?h.value.trim():"";const txt=AI.promptChat(SH.aiHint);
+  try{navigator.clipboard&&navigator.clipboard.writeText(txt).catch(()=>{})}catch(e){}
+  const st=$("#brStat");
+  if(SH.brFile&&navigator.canShare&&navigator.canShare({files:[SH.brFile]})){
+   navigator.share({files:[SH.brFile],text:txt,title:"Mahlzeit analysieren"}).then(()=>{if(st)st.innerHTML='<div class="status">Gesendet. Wenn ChatGPT geantwortet hat: Datenblock kopieren und hier bei Schritt 3 einfügen.</div>'}).catch(e=>{if(e&&e.name==="AbortError")return;if(st)st.innerHTML='<div class="status err">Teilen hat nicht geklappt. Der Auftrag ist kopiert: ChatGPT öffnen, Foto anhängen, einfügen, senden.</div><a class="btn block" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT öffnen ↗</a>'});
+  }else{if(st)st.innerHTML=`<div class="status">Auftrag kopiert. Jetzt in ChatGPT das Foto mit + anhängen, einfügen und senden.</div><a class="btn block" href="https://chatgpt.com/" target="_blank" rel="noopener">ChatGPT öffnen ↗</a><textarea readonly style="min-height:90px;margin-top:8px">${esc(txt)}</textarea>`}
+  break}
+ case"brPaste":{const ta=$("#brIn");if(ta&&ta.value.trim()){brParse(ta.value);break}
+  if(navigator.clipboard&&navigator.clipboard.readText){navigator.clipboard.readText().then(t=>{if(!t){toast("Die Zwischenablage ist leer.");return}if(ta)ta.value=t;brParse(t)}).catch(()=>{toast("Einfügen bitte manuell: lange ins Feld tippen → Einfügen.");if(ta)ta.focus()})}
+  else{toast("Lange ins Feld tippen → Einfügen.");if(ta)ta.focus()}break}
  case"aiSetup":SH.aiSetup=true;SH.ai=null;renderTab();break;
  case"aiBack":SH.aiSetup=false;SH.aiKeyDraft="";renderTab();break;
  case"aiProv":{const k=$("#aiKey");SH.aiKeyDraft=k?k.value:"";SH.aiProv=d.v;renderTab();break}
@@ -980,6 +1002,7 @@ document.addEventListener("click",e=>{
 });
 document.addEventListener("input",e=>{
  const t=e.target;
+ if(t.id==="brIn"&&t.value.includes("{")&&t.value.includes("}")){brParse(t.value);return}
  if(t.dataset&&t.dataset.ai==="grams"&&SH&&SH.ai){const i=+t.closest(".airow").dataset.i;SH.ai.result.items[i].grams=num(t.value)||0;updAiTot();return}
  if(t.id==="q")renderSearch(t.value);
  else if(t.id==="amt")updAmt();

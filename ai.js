@@ -25,6 +25,21 @@ ${hint ? `Angaben der Person zur Mahlzeit (haben Vorrang vor deiner Schätzung):
 "confidence" ist "hoch", "mittel" oder "niedrig". Namen auf Deutsch. Wenn auf dem Foto kein Essen zu sehen ist: {"items":[],"notes":"Kein Essen erkannt."}`;
 }
 
+/* Auftrag für die ChatGPT-App: übersichtliche Tabelle für dich + kopierbarer Datenblock für die App */
+function promptChat(hint) {
+  return `Analysiere das angehängte Foto meiner Mahlzeit für mein Ernährungstagebuch.
+1. Erkenne jede Komponente (auch Öl, Butter, Soßen, Dressing) und schätze ihr Gewicht in Gramm anhand von Größenbezügen (Teller ca. 26 cm, Besteck, Verpackung).
+2. Verwende typische deutsche Nährwerte pro 100 g für die zubereitete Form.
+${hint ? `Meine Angaben (haben Vorrang vor deiner Schätzung): ${hint}\n` : ""}
+Antworte in genau zwei Teilen:
+TEIL 1: Eine übersichtliche Tabelle mit den Spalten Lebensmittel | Menge (g) | kcal | Eiweiß (g) | Kohlenhydrate (g) | Fett (g), Werte für die geschätzte Menge, letzte Zeile = Summe. Danach ein Satz zu Unsicherheiten.
+TEIL 2: Ein Codeblock mit der Sprache json (damit ich ihn kopieren kann), exakt in diesem Format, Nährwerte PRO 100 g:
+\`\`\`json
+{"items":[{"name":"Basmatireis gekocht","grams":180,"kcal_100g":130,"protein_100g":2.7,"carbs_100g":28,"fat_100g":0.3,"confidence":"mittel"}],"notes":"kurzer Hinweis"}
+\`\`\`
+"confidence" ist "hoch", "mittel" oder "niedrig". Kein weiterer Text nach dem Codeblock.`;
+}
+
 /* JSON aus der Antwort holen, auch wenn sie in ``` steht oder Text drumherum hat */
 function extractJSON(text) {
   if (!text) throw err("parse", "Leere Antwort");
@@ -129,6 +144,6 @@ async function testConnection(cfg, fetchImpl) {
   return true;
 }
 
-const API = {PROVIDERS, prompt, extractJSON, normalize, ask, analyzeMeal, testConnection};
+const API = {PROVIDERS, prompt, promptChat, extractJSON, normalize, ask, analyzeMeal, testConnection};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.AI = API;
 })(typeof window !== "undefined" ? window : this);
