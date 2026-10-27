@@ -4,6 +4,7 @@
 (function (root) {
 "use strict";
 
+const GEMINI_FALLBACK = ["gemini-flash-lite-latest"];
 const PROVIDERS = {
   gemini: {name: "Google Gemini", model: "gemini-flash-latest", keyUrl: "https://aistudio.google.com/app/apikey",
     note: "Gratis-Kontingent für den Eigengebrauch. Achtung: Im Gratis-Tarif darf Google Eingaben zur Verbesserung seiner Dienste nutzen."},
@@ -55,6 +56,7 @@ async function httpError(r) {
   if (r.status === 401 || r.status === 403) return err("auth", "API-Schlüssel ungültig oder ohne Berechtigung. " + detail, r.status);
   if (r.status === 429) return err("quota", "Limit erreicht oder kein Guthaben. " + detail, r.status);
   if (r.status === 404) return err("model", "Modell nicht gefunden. Prüfe den Modellnamen. " + detail, r.status);
+  if (r.status === 503 || r.status === 529 || r.status === 500) return err("busy", "Der Anbieter ist gerade überlastet. Bitte in ein paar Minuten noch einmal versuchen.", r.status);
   return err("http", `Fehler ${r.status}. ${detail}`, r.status);
 }
 
@@ -70,11 +72,20 @@ async function ask(cfg, text, imageB64, fetchImpl, timeoutMs) {
   try {
     if (cfg.provider === "gemini") {
       const parts = [{text}]; if (imageB64) parts.push({inline_data: {mime_type: "image/jpeg", data: imageB64}});
-      r = await f(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": cfg.key},
-        body: JSON.stringify({contents: [{role: "user", parts}], generationConfig: {responseMimeType: "application/json", temperature: 0.2}})
-      });
-      if (!r.ok) throw await httpError(r);
+      // Bei Überlastung: kurz warten und erneut versuchen, dann auf das leichtere Modell ausweichen
+      const tries = [model, model, ...GEMINI_FALLBACK.filter(m => m !== model)];
+      let lastErr = null;
+      for (let i = 0; i < tries.length; i++) {
+        if (i > 0) await new Promise(res => setTimeout(res, 1500));
+        r = await f(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(tries[i])}:generateContent`, {
+          method: "POST", headers: {"content-type": "application/json", "x-goog-api-key": cfg.key},
+          body: JSON.stringify({contents: [{role: "user", parts}], generationConfig: {responseMimeType: "application/json", temperature: 0.2}})
+        });
+        if (r.ok) break;
+        lastErr = await httpError(r);
+        if (lastErr.code !== "busy" && !(lastErr.code === "model" && i >= 2)) throw lastErr;
+      }
+      if (!r.ok) throw lastErr;
       const j = await r.json();
       const t = j.candidates && j.candidates[0] && j.candidates[0].content && (j.candidates[0].content.parts || []).map(p => p.text || "").join("");
       if (!t) throw err("blocked", "Keine Antwort erhalten (evtl. vom Anbieter blockiert).");
