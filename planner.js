@@ -6,15 +6,15 @@
 
 /* ---------- Muskeln ---------- */
 const MUSCLES = ["quads","hams","chest","back","front","glutes","side","rear","triceps","biceps","calves","abs"];
-const MUSN = {chest:"Brust",back:"Rücken",quads:"Quadrizeps",hams:"Beinbeuger",glutes:"Po",front:"Vordere Schulter",side:"Seitliche Schulter",rear:"Hintere Schulter",triceps:"Trizeps",biceps:"Bizeps",calves:"Waden",abs:"Bauch"};
-const TIER = {quads:3,hams:3,chest:3,back:3,glutes:2,front:2,side:2,rear:1,triceps:1,biceps:1,calves:1,abs:0};
+const MUSN = {chest:"Brust",back:"Rücken",quads:"Quadrizeps",hams:"Beinbeuger",glutes:"Po",front:"Vordere Schulter",side:"Seitliche Schulter",rear:"Hintere Schulter",triceps:"Trizeps",biceps:"Bizeps",calves:"Waden",abs:"Bauch",adductors:"Adduktoren"};
+const TIER = {quads:3,hams:3,chest:3,back:3,glutes:2,front:2,side:2,rear:1,triceps:1,biceps:1,calves:1,abs:0,adductors:0};
 
 /* Bewegungsmuster -> [Zielmuskel, Mitbelastung (zählt halb bzw. anteilig), Grundübung?] */
 const PAT = {
   squat:["quads",{glutes:.5},1], hinge:["hams",{glutes:.5},1], hpush:["chest",{triceps:.5,front:.5},1],
   vpush:["front",{triceps:.5,side:.5},1], hpull:["back",{biceps:.5,rear:.5},1], vpull:["back",{biceps:.5},1],
   quadiso:["quads",{},0], hamiso:["hams",{},0], glute:["glutes",{hams:.25},0], chestiso:["chest",{front:.25},0],
-  side:["side",{},0], rear:["rear",{},0], bi:["biceps",{},0], tri:["triceps",{},0], calf:["calves",{},0], core:["abs",{},0]
+  side:["side",{},0], rear:["rear",{},0], bi:["biceps",{},0], tri:["triceps",{},0], calf:["calves",{},0], core:["abs",{},0], adduct:["adductors",{},0]
 };
 
 /* ---------- Übungen: need = UND über "+", ODER über "|"; rank = Grundpriorität (klein = bevorzugt) ----------
@@ -34,7 +34,7 @@ const RAW = [
  ["bb_row","Langhantelrudern","hpull","rack",3],["db_row","Einarmiges Kurzhantelrudern","hpull","db+bench|incline",3],["inv_row","Rudern im Hang (Smith/Rack)","hpull","smith|rack",7,{r:[8,15]}],["table_row","Tischrudern (Körpergewicht)","hpull","",9,{r:[8,15]}],
  ["latpull","Latziehen","vpull","latpull",1],["pullup","Klimmzüge","vpull","pullup",2,{r:[5,12]}],["sa_pulldown","Straight-Arm Pulldown","vpull","cable",6,{c:0,s:{}}],
  ["legext","Beinstrecken","quadiso","legext",1],["sissy","Spanische Kniebeuge","quadiso","",9,{r:[10,20]}],
- ["legcurl","Beinbeuger (Maschine)","hamiso","legcurl",1],["db_legcurl","Kurzhantel-Beinbeuger liegend","hamiso","db+bench",5],
+ ["legcurl","Beinbeuger liegend","hamiso","legcurl",1.5],["legcurl_s","Beinbeuger sitzend","hamiso","legcurl_s",0.5],["db_legcurl","Kurzhantel-Beinbeuger liegend","hamiso","db+bench",5],
  ["hipthrust_m","Hip Thrust (Maschine)","glute","hipthrust",1],["bb_hipthrust","Hip Thrust (Langhantel)","glute","rack+bench",2],["abduct","Abduktoren-Maschine","glute","abduct",3,{s:{}}],
  ["glute_bridge","Glute Bridge","glute","",9,{r:[12,20]}],
  ["pecdeck","Butterfly","chestiso","pecdeck",1],["cable_fly","Kabel-Flys","chestiso","cable",2],["db_fly","Kurzhantel-Flys","chestiso","db+bench|incline",3],
@@ -43,6 +43,17 @@ const RAW = [
  ["ez_curl","SZ-Curls","bi","ez",1],["cable_curl","Kabel-Curls","bi","cable",2],["db_curl","Kurzhantel-Curls","bi","db",2],["hammer","Hammer Curls","bi","db",3],
  ["pushdown","Trizepsdrücken am Kabel","tri","cable",1],["oh_db","Überkopf-Trizepsdrücken (KH)","tri","db",2],["skull","SZ-Stirndrücken","tri","ez+bench|incline",2],
  ["close_bench","Enges Bankdrücken","tri","rack+bench",4,{c:1,s:{chest:.5},r:[6,10]}],["diamond","Enge Liegestütze","tri","",9,{r:[8,15]}],
+ ["pendulum","Pendel-Kniebeuge","squat","pendulum",2],["backext","Rückenstrecker (Hyperextension)","hinge","backext",4,{r:[10,15]}],
+ ["incline_mp","Schrägbank-Brustpresse (Maschine)","hpush","inclinechest",2],["smith_incline","Schrägbankdrücken an der Multipresse","hpush","smith+incline",5],["dip_assist","Dips mit Unterstützung","hpush","assist",6,{r:[8,12]}],
+ ["pullup_assist","Klimmzüge mit Unterstützung","vpull","assist",2,{r:[6,12]}],["latpull_close","Latziehen eng (V-Griff)","vpull","latpull",2],["pullover_m","Pullover-Maschine","vpull","pulloverm",3,{c:0,s:{}}],
+ ["row_m","Rudermaschine (brustgestützt)","hpull","rowmachine",1.5],["cable_row1","Einarmiges Rudern am Kabel","hpull","cable",4],
+ ["glute_kb_m","Glute-Kickback-Maschine","glute","glutem",2],["cable_kickback","Kickbacks am Kabel","glute","cable",4,{r:[10,15]}],["hipthrust_smith","Hip Thrust an der Multipresse","glute","smith+bench",3],
+ ["adduct_m","Adduktoren-Maschine","adduct","abduct",3,{r:[10,15]}],
+ ["lat_raise_m","Seitheben-Maschine","side","lateralm",0.5],
+ ["preacher_m","Bizepsmaschine (Scott)","bi","preacher",1],["ez_preacher","SZ-Scottcurls","bi","ez+preacher",2],["bayesian","Bayesian Curls (Kabel)","bi","cable",2.5],
+ ["cable_oh_tri","Überkopf-Trizepsdrücken am Kabel","tri","cable",0.5],["tri_m","Trizepsmaschine","tri","trimach",1.5],["dip_m","Dip-Maschine (sitzend)","tri","trimach",2,{c:1,s:{chest:.5,front:.25},r:[8,12]}],
+ ["calf_seated","Wadenheben sitzend","calf","calfseated",2],
+ ["ab_m","Bauchmaschine (Crunch)","core","absmach",1],["torso_m","Rotationsmaschine","core","torso",4],
  ["calf_m","Wadenheben (Maschine)","calf","calf",1],["calf_lp","Wadendrücken an der Beinpresse","calf","legpress",2],["calf_db","Wadenheben mit Kurzhantel","calf","db",3],["calf_bw","Wadenheben (Körpergewicht)","calf","",9,{r:[12,25]}],
  ["cable_crunch","Kabel-Crunches","core","cable",1],["hlr","Beinheben hängend","core","pullup",2,{r:[8,15]}],["crunch","Crunches","core","",6,{r:[12,20]}],["deadbug","Dead Bugs","core","",7,{r:[8,15]}]
 ];
@@ -65,11 +76,11 @@ const EXMAP = Object.fromEntries(EX.map(e => [e.id, e]));
 
 /* Beschwerden -> Übungen, die dann nicht vorgeschlagen werden */
 const INJ = {
-  schulter:["ohp","db_ohp","smith_ohp","machine_sp","pike","dips","bench","incline_bb","smith_bench","skull","close_bench","db_fly","hlr"],
+  schulter:["dip_assist","dip_m","ohp","db_ohp","smith_ohp","machine_sp","pike","dips","bench","incline_bb","smith_bench","skull","close_bench","db_fly","hlr"],
   ellbogen:["skull","oh_db","close_bench","diamond","dips","ez_curl","pullup"],
   handgelenk:["pushup","diamond","pike","ez_curl","bench","close_bench","kb_swing"],
-  ruecken:["deadlift","rdl","bb_row","bb_squat","ohp","kb_swing","tbar","sl_rdl","smith_squat"],
-  knie:["bb_squat","smith_squat","hack_squat","bss","lunge","sissy","bw_squat","goblet"],
+  ruecken:["backext","deadlift","rdl","bb_row","bb_squat","ohp","kb_swing","tbar","sl_rdl","smith_squat"],
+  knie:["pendulum","bb_squat","smith_squat","hack_squat","bss","lunge","sissy","bw_squat","goblet"],
   huefte:["deadlift","bss","lunge","kb_swing","bb_squat","sl_rdl"]
 };
 const INJN = {schulter:"Schulter",ellbogen:"Ellbogen",handgelenk:"Handgelenk",ruecken:"Unterer Rücken",knie:"Knie",huefte:"Hüfte"};
@@ -394,7 +405,7 @@ function weeklyVolume(days) {
   const v = Object.fromEntries(MUSCLES.map(m => [m, 0]));
   for (const d of days) for (const it of d.items) {
     const ex = EXMAP[it.ex]; if (!ex) continue;
-    v[ex.m] += it.sets;
+    v[ex.m] = (v[ex.m] || 0) + it.sets;
     for (const [sm, w] of Object.entries(ex.s)) v[sm] += it.sets * w;
   }
   return v;
