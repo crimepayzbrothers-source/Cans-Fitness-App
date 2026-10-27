@@ -312,6 +312,14 @@ svg .p.on2{fill:url(#mg2);stroke:#FFC3A8;filter:url(#gl)}
 .legend.plan{background:none;border:1px dashed var(--accent)}
 .legend.sec{background:#FF9F6E}
 .exlist{display:flex;flex-direction:column;gap:8px}
+.listhd{display:flex;align-items:center;gap:10px}
+.exrow2.sorting{padding-right:6px}
+.exrow2.drag{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 10px 28px rgba(0,0,0,.5),var(--glow);transform:scale(1.02);position:relative;z-index:3}
+.sortbtns{display:flex;flex-direction:column;gap:4px;flex:none}
+.sortbtns button{width:38px;height:30px;border-radius:8px;border:1px solid var(--edge);background:var(--surface);color:var(--ink);font-size:15px;line-height:1}
+.sortbtns button:disabled{opacity:.3}
+.grip{width:40px;align-self:stretch;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab;flex:none;font-size:22px;user-select:none;-webkit-user-select:none}
+.drag .grip{color:var(--accent2)}
 .exrow2{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:linear-gradient(180deg,rgba(21,35,66,.92),rgba(10,18,36,.94));border:1px solid var(--edge);color:var(--ink);text-align:left;width:100%}
 .exrow2 .no{width:18px;font-family:var(--display);font-weight:700;color:var(--muted);flex:none;text-align:center}
 .stickybtn{position:sticky;bottom:calc(64px + env(safe-area-inset-bottom,0px));padding:24px 0 12px;z-index:5;background:linear-gradient(180deg,transparent,var(--bg) 45%)}
@@ -407,9 +415,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=15"></script>
-<script src="ai.js?v=15"></script>
-<script src="figure.js?v=15"></script>
+<script src="planner.js?v=16"></script>
+<script src="ai.js?v=16"></script>
+<script src="figure.js?v=16"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -554,7 +562,7 @@ function ensureDay(d){if(!DAYS[d])DAYS[d]={meals:{}};if(!DAYS[d].meals)DAYS[d].m
 /* ---------- views ---------- */
 const VIEWS={home:"home",food:"ernaehrung",train:"training",plan:"plan",gym:"studio",stats:"statistik",profile:"profil"};
 const HASH2V=Object.fromEntries(Object.entries(VIEWS).map(([a,b])=>[b,a]));
-function route(){const h=location.hash.slice(1);if(h.startsWith("einheit")){UI.view="day";UI.preview=+h.slice(7)||0}else UI.view=h==="verlauf"?"stats":(HASH2V[h]||"home");render()}
+function route(){UI.sortDay=null;const h=location.hash.slice(1);if(h.startsWith("einheit")){UI.view="day";UI.preview=+h.slice(7)||0}else UI.view=h==="verlauf"?"stats":(HASH2V[h]||"home");render()}
 window.addEventListener("hashchange",route);
 
 function render(){
@@ -1337,11 +1345,44 @@ function vDay(){
  const st=planState(),day=P.days[di],its=day.items.map(it=>itemView(it,st)),ms=dayMuscles(day);
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
+ ${UI.sortDay===di?sortList(di,its):`<div class="listhd"><div class="lbl grow">Übungen</div>${its.length>1?`<button class="btn sm ghost pill" data-act="sortOn" data-d="${di}">↕ Reihenfolge ändern</button>`:""}</div>
  <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
  <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
- <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div></div>`;
+ <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div>`}</div>`;
 }
+
+/* Reihenfolge ändern: am Griff ziehen oder mit den Pfeilen verschieben */
+function sortList(di,its){
+ return`<div class="listhd"><div class="grow"><div class="lbl acc">Reihenfolge ändern</div><div class="small muted">Am Griff ⠿ ziehen oder mit den Pfeilen verschieben.</div></div></div>
+ <div class="exlist" id="sortList" data-d="${di}">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<div class="exrow2 sorting" data-i="${ii}"><span class="grip" aria-label="Ziehen zum Verschieben">⠿</span><span class="no">${ii+1}</span>${exMini(ex)}<div class="grow" style="min-width:0"><b class="ell" style="display:block">${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh.</div></div><div class="sortbtns"><button data-act="sortMv" data-i="${ii}" data-n="-1" aria-label="Nach oben" ${ii===0?"disabled":""}>▲</button><button data-act="sortMv" data-i="${ii}" data-n="1" aria-label="Nach unten" ${ii===its.length-1?"disabled":""}>▼</button></div></div>`}).join("")}</div>
+ <div class="stickybtn"><button class="btn primary block" data-act="sortOff">✓ Fertig</button></div>`;
+}
+function reorderItems(di,order){
+ const P=M.plan,l=P.days[di].items;if(order.length!==l.length||order.every((v,i)=>v===i))return false;
+ P.days[di].items=order.map(i=>l[i]);
+ const lg=P.log=P.log||[];const t=`Reihenfolge von ${P.days[di].name} geändert`;if(lg[0]&&lg[0].d===today()&&lg[0].t===t){}else lg.unshift({d:today(),t});
+ persist("main");return true;
+}
+/* Ziehen mit Finger oder Maus: die Zeile wandert beim Ziehen an die neue Stelle */
+let DRAG=null;
+document.addEventListener("pointerdown",e=>{
+ const g=e.target.closest(".grip");if(!g)return;const row=g.closest(".exrow2"),list=row&&row.parentElement;if(!list||list.id!=="sortList")return;
+ e.preventDefault();DRAG={row,list,id:e.pointerId,moved:false};row.classList.add("drag");try{g.setPointerCapture(e.pointerId)}catch(x){}buzz();
+});
+document.addEventListener("pointermove",e=>{
+ if(!DRAG||e.pointerId!==DRAG.id)return;e.preventDefault();
+ const rows=[...DRAG.list.children].filter(r=>r!==DRAG.row),y=e.clientY;
+ let before=null;for(const r of rows){const b=r.getBoundingClientRect();if(y<b.top+b.height/2){before=r;break}}
+ if(before!==DRAG.row.nextElementSibling||(!before&&DRAG.row!==DRAG.list.lastElementChild)){DRAG.list.insertBefore(DRAG.row,before);DRAG.moved=true;[...DRAG.list.children].forEach((r,i)=>{const n=r.querySelector(".no");if(n)n.textContent=i+1})}
+ // am Rand automatisch scrollen
+ if(y<120)window.scrollBy(0,-12);else if(y>window.innerHeight-170)window.scrollBy(0,12);
+},{passive:false});
+function endDrag(e){
+ if(!DRAG||(e&&e.pointerId!==DRAG.id))return;const d=DRAG;DRAG=null;d.row.classList.remove("drag");
+ const order=[...d.list.children].map(r=>+r.dataset.i);if(d.moved&&reorderItems(+d.list.dataset.d,order))toast("Reihenfolge gespeichert");render();
+}
+document.addEventListener("pointerup",endDrag);document.addEventListener("pointercancel",endDrag);
 
 /* ---------- 4 Übungsdetail ---------- */
 const CUES_ID={
@@ -1654,6 +1695,10 @@ document.addEventListener("click",e=>{
  case"brange":UI.brange=d.t;render();break;
  case"calNav":UI.calM=(UI.calM||0)+(+d.n);render();break;
  case"dayOpen":location.hash="#einheit"+d.d;break;
+ case"sortOn":UI.sortDay=+d.d;render();break;
+ case"sortOff":UI.sortDay=null;render();break;
+ case"sortMv":{const di=UI.sortDay,n=M.plan.days[di].items.length,i=+d.i,j=i+(+d.n);if(j<0||j>=n)break;const o=[...Array(n).keys()];[o[i],o[j]]=[o[j],o[i]];reorderItems(di,o);render();break}
+ case"wMv":{const l=M.active.exercises,i=SH.ei,j=i+(+d.n);if(j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];persist("main");closeSheet();render();toast(j<i?"Übung nach oben verschoben":"Übung nach unten verschoben");break}
  case"moveDay":moveSheet(+d.d);break;
  case"movePerm":SH.perm=d.v==="1";moveSheet(SH.move);break;
  case"moveTo":moveTo(+d.v);break;
@@ -1706,7 +1751,7 @@ document.addEventListener("click",e=>{
  case"addWEx":exPicker(id=>{M.active.exercises.push(newExEntry(id,null));persist("main");closeSheet();render()},"Übung hinzufügen");break;
  case"addSet":{const ex=M.active.exercises[+d.ei];const last=ex.sets[ex.sets.length-1];ex.sets.push({kg:last?last.kg:null,reps:null,rir:null,done:false});persist("main");render();break}
  case"exMenu":{const ei=+d.ei;SH={ei};const ex=M.active.exercises[ei];const cur=EXMAP[ex.ex];const alts=availEx().filter(e=>cur&&e.pat===cur.pat&&e.id!==cur.id);
-  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
+  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}${M.active.exercises.length>1?`<div class="row"><button class="btn ghost grow" data-act="wMv" data-n="-1" ${ei===0?"disabled":""}>↑ Nach oben</button><button class="btn ghost grow" data-act="wMv" data-n="1" ${ei===M.active.exercises.length-1?"disabled":""}>↓ Nach unten</button></div><div class="small muted">Gilt nur für dieses Training. Die Reihenfolge im Plan änderst du in der Einheit unter „Reihenfolge ändern“.</div>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
  case"wSwap":{const ex=M.active.exercises[SH.ei];M.active.exercises[SH.ei]=Object.assign(newExEntry(d.id,ex.target),{});persist("main");closeSheet();render();break}
  case"rmSet":M.active.exercises[SH.ei].sets.pop();persist("main");closeSheet();render();break;
  case"rmWEx":M.active.exercises.splice(SH.ei,1);persist("main");closeSheet();render();break;
