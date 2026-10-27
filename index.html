@@ -689,7 +689,9 @@ function photoTab(){
  <div id="aiStat"></div>
  <div class="small muted">Analyse mit ${AI.PROVIDERS[cfg.provider].name}. <button class="linkbtn" data-act="aiSetup">Anbieter ändern</button></div></div>`;
 }
-function aiStat(html,err){const s=$("#aiStat");if(s)s.innerHTML=html?`<div class="status ${err?"err":""}">${html}</div>`:""}
+let aiTick=null;
+function aiTimer(label){clearInterval(aiTick);const t0=Date.now();const upd=()=>{const el=$("#aiSec");if(!el){clearInterval(aiTick);return}el.textContent=Math.round((Date.now()-t0)/1000)+" s"};aiTick=setInterval(upd,1000);return`${label} <span id="aiSec" class="num">0 s</span>`}
+function aiStat(html,err){if(err||!html)clearInterval(aiTick);const s=$("#aiStat");if(s)s.innerHTML=html?`<div class="status ${err?"err":""}">${html}</div>`:""}
 function updAiTot(){if(!SH||!SH.ai||!SH.ai.result)return;const t={kcal:0,p:0,c:0,f:0};SH.ai.result.items.forEach((it,i)=>{const k=it.grams/100;const kc=$("#aik"+i),mm=$("#aim"+i);if(kc)kc.textContent=fmt(it.kcal*k)+" kcal";if(mm)mm.innerHTML=`<span class="p">${fmt(it.p*k,1)} P</span><span class="c">${fmt(it.c*k,1)} KH</span><span class="f">${fmt(it.f*k,1)} F</span>`;if(it.on){t.kcal+=it.kcal*k;t.p+=it.p*k;t.c+=it.c*k;t.f+=it.f*k}});const el=$("#aiTot");if(el)el.innerHTML=`<div class="grow"><div class="lbl">Summe</div><div class="num" style="font-size:28px">${fmt(t.kcal)} kcal</div></div><div class="mdots"><span class="p">${fmt(t.p)} P</span><span class="c">${fmt(t.c)} KH</span><span class="f">${fmt(t.f)} F</span></div>`}
 async function runAi(file){
  const cfg=aiCfg();if(!cfg||!file)return;
@@ -697,12 +699,12 @@ async function runAi(file){
  const h=$("#aiHint");if(h)SH.aiHint=h.value.trim();
  let img;
  try{const c=await downscale(file,1024);img=c.toDataURL("image/jpeg",.82)}catch(e){aiStat("Das Foto konnte nicht gelesen werden.",true);return}
- aiStat(`<img class="aiimg" src="${img}" alt="" style="margin-bottom:8px">Analysiere mit ${AI.PROVIDERS[cfg.provider].name} … das dauert meist 5–20 Sekunden.`);
+ aiStat(`<img class="aiimg" src="${img}" alt="" style="margin-bottom:8px">`+aiTimer(`Analysiere mit ${AI.PROVIDERS[cfg.provider].name} … meist 5–20 Sekunden:`));
  const run=SH.aiRun=uid();
  try{
   const r=await AI.analyzeMeal(cfg,img.split(",")[1],SH.aiHint||"");
   if(!SH||SH.aiRun!==run)return;
-  r.items.forEach(it=>it.on=true);SH.ai={result:r,img};renderTab();
+  clearInterval(aiTick);r.items.forEach(it=>it.on=true);SH.ai={result:r,img};renderTab();
  }catch(e){
   if(!SH||SH.aiRun!==run)return;
   aiStat(esc(e.message||"Analyse fehlgeschlagen.")+(e.code==="auth"||e.code==="model"?` <button class="linkbtn" data-act="aiSetup">Einstellungen öffnen</button>`:e.code==="parse"?" Versuch es noch einmal.":""),true);
@@ -872,8 +874,8 @@ document.addEventListener("click",e=>{
   if(!key){aiStat("Bitte den API-Schlüssel einfügen.",true);break}
   const cfg={provider:prov,key,model:(($("#aiModel")||{}).value||"").trim()||AI.PROVIDERS[prov].model};
   if(a==="aiSaveForce"){setAiCfg(cfg);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Gespeichert");break}
-  SH.aiKeyDraft=key;b.disabled=true;aiStat("Teste die Verbindung …");
-  AI.testConnection(cfg).then(()=>{setAiCfg(cfg);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Verbindung klappt. Du kannst jetzt fotografieren.")})
+  SH.aiKeyDraft=key;b.disabled=true;aiStat(aiTimer("Teste die Verbindung … (max. 30 s)"));
+  AI.testConnection(cfg).then(()=>{clearInterval(aiTick);setAiCfg(cfg);SH.aiSetup=false;SH.aiKeyDraft="";renderTab();toast("Verbindung klappt. Du kannst jetzt fotografieren.")})
    .catch(e=>{b.disabled=false;aiStat(esc(e.message||"Test fehlgeschlagen.")+` <button class="linkbtn" data-act="aiSaveForce">Trotzdem speichern</button>`,true)});
   break}
  case"aiAdd":{const R=SH.ai&&SH.ai.result;if(!R)break;const meal=($("#mealSel")||{}).value||SH.meal;const day=ensureDay(UI.date);let n=0;

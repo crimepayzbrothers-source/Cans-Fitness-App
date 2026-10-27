@@ -59,8 +59,12 @@ async function httpError(r) {
 }
 
 /* Anfrage an den Anbieter. imageB64 = JPEG ohne data:-Präfix, oder null für einen reinen Text-Test. */
-async function ask(cfg, text, imageB64, fetchImpl) {
-  const f = fetchImpl || root.fetch.bind(root);
+async function ask(cfg, text, imageB64, fetchImpl, timeoutMs) {
+  const base = fetchImpl || root.fetch.bind(root);
+  const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; if (ctl) ctl.abort(); }, timeoutMs || 60000);
+  const f = (url, opt) => base(url, Object.assign({}, opt, ctl ? {signal: ctl.signal} : {}));
   const model = cfg.model || PROVIDERS[cfg.provider].model;
   let r;
   try {
@@ -99,16 +103,17 @@ async function ask(cfg, text, imageB64, fetchImpl) {
     throw err("config", "Kein Anbieter gewählt.");
   } catch (e) {
     if (e.code) throw e;
+    if (timedOut) throw err("timeout", `Keine Antwort nach ${Math.round((timeoutMs || 60000) / 1000)} Sekunden. Der Anbieter ist gerade langsam oder nicht erreichbar.`);
     throw err("network", "Keine Verbindung zum Anbieter. Prüfe dein Internet.");
-  }
+  } finally { clearTimeout(timer); }
 }
 
 async function analyzeMeal(cfg, imageB64, hint, fetchImpl) {
-  const text = await ask(cfg, prompt(hint), imageB64, fetchImpl);
+  const text = await ask(cfg, prompt(hint), imageB64, fetchImpl, 90000);
   return normalize(extractJSON(text));
 }
 async function testConnection(cfg, fetchImpl) {
-  const t = await ask(cfg, 'Antworte nur mit diesem JSON: {"ok":true}', null, fetchImpl);
+  const t = await ask(cfg, 'Antworte nur mit diesem JSON: {"ok":true}', null, fetchImpl, 30000);
   const j = extractJSON(t); if (!j || j.ok !== true) throw err("parse", "Unerwartete Antwort");
   return true;
 }
