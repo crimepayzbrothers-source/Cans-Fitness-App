@@ -402,7 +402,7 @@ export function create(el, exId, prim, sec, opt) {
     return F.tempo(exId, ((now - t0) % per) / per);
   };
   const ecc = !front && F.ECC_FIRST.has(first.tpl);
-  let lastDraw = 0;
+  let lastDraw = 0, orbit = null, recTrack = null;
   const frame = now => {
     if (!alive) return;
     if (!el.isConnected) { dispose(); return; }
@@ -410,6 +410,7 @@ export function create(el, exId, prim, sec, opt) {
     if (document.hidden || now - lastDraw < 32) return;   // höchstens ~30 Bilder pro Sekunde
     lastDraw = now;
     const t = tAt(now);
+    if (orbit) targetAz = orbit.az0 + Math.min(1, (now - orbit.start) / orbit.ms) * orbit.sweep;   // Kamerafahrt während der Aufnahme
     az += (targetAz - az) * 0.18; elev += (targetEl - elev) * 0.18;
     if (Math.abs(t - lastT) > 1e-4 || lastT < 0) {
       lastT = t;
@@ -425,6 +426,7 @@ export function create(el, exId, prim, sec, opt) {
     M.prim.emissiveIntensity = 0.45 + 0.45 * pulse; M.sec.emissiveIntensity = 0.2 + 0.2 * pulse;
     placeCam();
     renderer.render(scene, camera);
+    if (recTrack && recTrack.requestFrame) { try { recTrack.requestFrame(); } catch (e) {} }   // Bild gezielt an die Aufnahme geben
   };
   raf = requestAnimationFrame(frame);
 
@@ -437,6 +439,40 @@ export function create(el, exId, prim, sec, opt) {
   return {
     setMode(m, s) { mode = m; slow = !!s; t0 = performance.now(); lastT = -1; },
     setView(v) { const p = VIEWS[v]; if (p) { targetAz = p[0] * RAD; targetEl = p[1] * RAD; } },
+    /* Video der Übung aufnehmen: reps Wiederholungen im normalen Tempo, Kamera fährt langsam um die Figur.
+       Liefert ein Blob (WebM bzw. MP4, je nach Browser). */
+    record(opts) {
+      opts = opts || {};
+      return new Promise((resolve, reject) => {
+        const cv = renderer.domElement;
+        if (!cv.captureStream || typeof MediaRecorder === "undefined") return reject(new Error("Videoaufnahme wird von diesem Browser nicht unterstützt."));
+        const types = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm", "video/mp4"];
+        const mimeType = types.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+        let rec;
+        let stream;
+        try {
+          stream = cv.captureStream(0);                       // 0 = Bilder nur auf Anforderung (nach jedem Zeichnen)
+          const tr = stream.getVideoTracks()[0];
+          if (tr && tr.requestFrame) recTrack = tr; else stream = cv.captureStream(30);
+          rec = new MediaRecorder(stream, mimeType ? {mimeType, videoBitsPerSecond: 5e6} : undefined);
+        } catch (e) { recTrack = null; return reject(e); }
+        const chunks = [], ms = (opts.reps || 2) * F.period(exId, false) + 400;
+        rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        rec.onerror = e => { restore(); orbit = null; recTrack = null; reject(e.error || new Error("Aufnahme fehlgeschlagen")); };
+        rec.onstop = () => { restore(); orbit = null; recTrack = null; stream.getTracks().forEach(t => t.stop()); if (!chunks.length) return reject(new Error("Der Browser hat keine Bilddaten geliefert. Bitte in Chrome oder Safari erneut versuchen.")); resolve(new Blob(chunks, {type: (rec.mimeType || mimeType || "video/webm").split(";")[0]})); };
+        // Durchsichtiger Hintergrund würde im Video schwarz: für die Aufnahme die Seitenfarbe einsetzen
+        const prevA = renderer.getClearAlpha(), prevC = renderer.getClearColor(new THREE.Color());
+        let bg = "#0C1528";
+        try { for (let n = el; n && n.nodeType === 1; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (c && c !== "transparent" && !/rgba\([^)]*,\s*0\)$/.test(c)) { bg = c; break; } } } catch (e) {}
+        try { renderer.setClearColor(new THREE.Color(bg), 1); } catch (e) { renderer.setClearColor(0x10141c, 1); }
+        const restore = () => renderer.setClearColor(prevC, prevA);
+        mode = "play"; slow = false; t0 = performance.now(); lastT = -1;
+        orbit = {start: performance.now(), ms, az0: targetAz, sweep: (opts.sweep ?? 70) * RAD};
+        rec.start(250);
+        const tick = setInterval(() => { if (opts.onProgress) opts.onProgress(Math.min(1, (performance.now() - orbit.start) / ms)); }, 250);
+        setTimeout(() => { clearInterval(tick); try { rec.stop(); } catch (e) { reject(e); } }, ms);
+      });
+    },
     dispose
   };
 }
