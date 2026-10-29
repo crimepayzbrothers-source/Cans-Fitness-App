@@ -21,7 +21,9 @@ function materials() {
     bar: new THREE.MeshStandardMaterial({color: 0xd2dae9, roughness: 0.22, metalness: 0.9}),
     cable: new THREE.MeshBasicMaterial({color: 0x86b4ff}),
     prim: new THREE.MeshStandardMaterial({color: 0xff4d3d, emissive: 0xff2a1a, emissiveIntensity: 0.6, roughness: 0.5}),
-    sec: new THREE.MeshStandardMaterial({color: 0xff9f6e, emissive: 0xff6a2a, emissiveIntensity: 0.3, roughness: 0.55})
+    sec: new THREE.MeshStandardMaterial({color: 0xff9f6e, emissive: 0xff6a2a, emissiveIntensity: 0.3, roughness: 0.55}),
+    musc: new THREE.MeshStandardMaterial({color: 0xcdd7ea, roughness: 0.4, metalness: 0.06}),
+    stack: new THREE.MeshStandardMaterial({color: 0x39486b, roughness: 0.4, metalness: 0.6})
   };
 }
 
@@ -159,11 +161,14 @@ function muscleSpecs(sc, prim, sec, handZ) {
       const along = (len * (t1 - t0)) / 2 + w * 0.25;
       const thick = seg === "torso" ? 3.3 : seg === "neck" ? 2.6 : r * 0.62, wide = seg === "torso" ? w * 0.62 : r * 0.78;
       const dir = new THREE.Vector3(dx, dy, 0), frontV = sgn ? new THREE.Vector3(nl[0] * sgn, nl[1] * sgn, 0) : new THREE.Vector3(nl[0], nl[1], 0);
-      out.push({C, dir, frontV, rx: thick * S, ry: along * S, rz: wide * S, col});
+      // nicht beanspruchte Muskeln nur als flache Kontur, damit die Figur nicht wulstig wirkt
+      const k2 = col === "musc" ? 0.72 : 1;
+      if (col === "musc") C.set(C.x - (C.x - (c2[0] + nl[0] * sgn * depth * 0.82) * S) * 1, (c2[1] + nl[1] * sgn * depth * 0.82) * S, C.z);
+      out.push({C, dir, frontV, rx: thick * S * k2, ry: along * S * (col === "musc" ? 0.92 : 1), rz: wide * S * (col === "musc" ? 0.85 : 1), col});
     }
   };
-  for (const m of prim) add2(m, "prim");
-  for (const m of sec) if (!prim.has(m)) add2(m, "sec");
+  // Alle Muskelformen werden modelliert (anatomische Kontur), nur die beanspruchten leuchten
+  for (const m of Object.keys(window.Figure.MUSCLE)) add2(m, prim.has(m) ? "prim" : sec.has(m) ? "sec" : "musc");
   return out;
 }
 function muscleSpecsFront(type, P, prim, sec) {
@@ -183,7 +188,7 @@ function muscleSpecsFront(type, P, prim, sec) {
 
 /* ---------- Geräte: 2D-Formen in 3D übertragen ---------- */
 const PADC = new Set(["#22314F", "#25365E"]), GROUNDY = 6;
-function equipSpecs(sc, handZ) {
+function equipSpecs(sc, handZ, lift) {
   const out = [];  // {type, ...}
   const J = sc.J;
   for (const p of sc.prims) {
@@ -217,6 +222,11 @@ function equipSpecs(sc, handZ) {
   }
   // Stangen, an denen man hängt: Querstange an den Händen
   if (["pullup", "legraise", "invrow"].includes(sc.tpl)) out.push({type: "crossbar", p: v3(J.W)});
+  // Gewichtsblock: bei Geräten mit Kabel oder Griff und einem Turm hebt sich der gewählte Teil des Blocks mit der Bewegung
+  const hasCable = sc.prims.some(p => p.k === "cable" || p.k === "handle"), free = sc.prims.some(p => p.k === "bb" || p.k === "db" || p.k === "kb");
+  const tower = sc.prims.find(p => p.k === "line" && p.w >= 4 && Math.abs(p.a[0] - p.b[0]) < 2 && Math.max(p.a[1], p.b[1]) > 100 && (p.c || "").toUpperCase() !== "#2A3A5C");
+  if (hasCable && !free && tower) out.push({type: "stack", p: v3([tower.a[0] + 9, 6]), lift: lift || 0});
+  return out;
   return out;
 }
 function equipFront(type, P) {
@@ -254,6 +264,7 @@ class EquipPool {
     else if (type === "roller") add(GEO.cyl, M.pad);
     else if (type === "barbell") { add(GEO.cyl, M.bar); for (let i = 0; i < 6; i++) add(GEO.cyl, i < 4 ? M.plate : M.bar); }
     else if (type === "dumbbell") { add(GEO.cyl, M.bar); add(GEO.cyl, M.plate); add(GEO.cyl, M.plate); }
+    else if (type === "stack") { add(GEO.box, M.stack); add(GEO.box, M.stack); add(GEO.cyl, M.bar); add(GEO.cyl, M.bar); add(GEO.cyl, M.bar); }
     else if (type === "kettle") { add(GEO.sphere, M.plate); add(new THREE.TorusGeometry(0.045, 0.011, 10, 24, Math.PI), M.plate); }
     return g;
   }
@@ -284,6 +295,15 @@ class EquipPool {
         alongZ(c[5], sp.p, 0.47, 0.5, 0.028); alongZ(c[6], sp.p, -0.5, -0.47, 0.028); break;
       }
       case "dumbbell": alongZ(c[0], sp.p, -0.07, 0.07, 0.013); alongZ(c[1], sp.p, 0.045, 0.085, 0.055); alongZ(c[2], sp.p, -0.085, -0.045, 0.055); break;
+      case "stack": {
+        const x = sp.p.x, y0 = sp.p.y, h = 0.34, top = 0.16 * sp.lift;
+        c[0].position.set(x, y0 + h / 2, 0); c[0].scale.set(0.12, h, 0.26); c[0].rotation.set(0, 0, 0);            // ruhender Teil
+        c[1].position.set(x, y0 + h + 0.06 + top, 0); c[1].scale.set(0.12, 0.12, 0.26); c[1].rotation.set(0, 0, 0); // gewählter Teil hebt sich
+        placeCyl(c[2], new THREE.Vector3(x, y0, -0.09), new THREE.Vector3(x, y0 + 0.9, -0.09), 0.008);              // Führungsstangen
+        placeCyl(c[3], new THREE.Vector3(x, y0, 0.09), new THREE.Vector3(x, y0 + 0.9, 0.09), 0.008);
+        placeCyl(c[4], new THREE.Vector3(x, y0 + h + 0.12 + top, 0), new THREE.Vector3(x, y0 + 1.05, 0), 0.006);     // Seil nach oben
+        break;
+      }
       case "kettle": placeSphere(c[0], sp.p.clone().add(new THREE.Vector3(0, -0.06, 0)), 0.075); c[1].position.copy(sp.p).add(new THREE.Vector3(0, -0.005, 0)); c[1].rotation.set(0, Math.PI / 2, 0); break;
     }
   }
@@ -304,7 +324,7 @@ export function create(el, exId, prim, sec, opt) {
   opt = opt || {};
   const F = window.Figure;
   const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   el.innerHTML = ""; el.appendChild(renderer.domElement);
@@ -355,7 +375,8 @@ export function create(el, exId, prim, sec, opt) {
 
   // Kamera: Kugelkoordinaten um die Figur; Ziehen dreht
   const VIEWS = {side: [0, 8], angle: [-38, 14], front: [-90, 8], back: [90, 10]};
-  let az = (front ? VIEWS.angle[0] - 30 : VIEWS.angle[0]) * RAD, elev = VIEWS.angle[1] * RAD;
+  const lying = !front && Math.abs(first.J.S[1] - first.J.H[1]) < 25;
+  let az = (front ? VIEWS.angle[0] - 30 : VIEWS.angle[0]) * RAD, elev = (lying ? 26 : VIEWS.angle[1]) * RAD;
   let targetAz = az, targetEl = elev;
   const placeCam = () => {
     const vfov = camera.fov * RAD, dist = radius / Math.sin(Math.min(vfov, vfov * camera.aspect) / 2) * 0.92;
@@ -377,14 +398,17 @@ export function create(el, exId, prim, sec, opt) {
   const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
   const tAt = now => {
     if (mode === "start") return 0; if (mode === "end") return 1;
-    const period = slow ? 6000 : 3000, ph = ((now - t0) % period) / period;
-    return ph < 0.12 ? 0 : ph < 0.47 ? ease((ph - 0.12) / 0.35) : ph < 0.6 ? 1 : 1 - ease((ph - 0.6) / 0.4);
+    const per = F.period(exId, slow);
+    return F.tempo(exId, ((now - t0) % per) / per);
   };
+  const ecc = !front && F.ECC_FIRST.has(first.tpl);
+  let lastDraw = 0;
   const frame = now => {
     if (!alive) return;
     if (!el.isConnected) { dispose(); return; }
     raf = requestAnimationFrame(frame);
-    if (document.hidden) return;
+    if (document.hidden || now - lastDraw < 32) return;   // höchstens ~30 Bilder pro Sekunde
+    lastDraw = now;
     const t = tAt(now);
     az += (targetAz - az) * 0.18; elev += (targetEl - elev) * 0.18;
     if (Math.abs(t - lastT) > 1e-4 || lastT < 0) {
@@ -392,7 +416,7 @@ export function create(el, exId, prim, sec, opt) {
       const sc = sample(t);
       const P = front ? jointsFront(sc.type, t) : jointsSide(sc, handZ);
       poseBody(body, P);
-      pool.sync(front ? equipFront(sc.type, P) : equipSpecs(sc, handZ));
+      pool.sync(front ? equipFront(sc.type, P) : equipSpecs(sc, handZ, ecc ? 1 - t : t));
       const specs = front ? muscleSpecsFront(sc.type, P, prim, sec) : muscleSpecs(sc, prim, sec, handZ);
       while (musMeshes.length < specs.length) { const m = mesh(GEO.sphere, M.prim, false); musMeshes.push(m); musG.add(m); }
       musMeshes.forEach((m, i) => { const sp = specs[i]; m.visible = !!sp; if (sp) { m.material = M[sp.col]; placeEllipsoid(m, sp.C, sp.dir, sp.frontV, sp.rx, sp.ry, sp.rz); } });

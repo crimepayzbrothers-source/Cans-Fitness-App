@@ -2,6 +2,8 @@ const P = require("./planner.js");
 const ALL = ["rack","db","bench","incline","cable","latpull","cablerow","rowmachine","legpress","hack","smith","legext","legcurl","chestpress","pecdeck","shoulderpress","pullup","dip","hipthrust","abduct","calf","ez","kb"];
 const HOME = ["db","bench","incline","pullup"];
 // Maschinenstudio nur mit den neu eingebauten Geräten (Oktober 2026)
+const GER = require("./geraete.js");
+const FITX_B = GER.STUDIOS.find(x => x.id === "fitx_belegt").eq, FITX_T = GER.STUDIOS.find(x => x.id === "fitx_typisch").eq;
 const MACH = ["legpress_s","beltsquat","vsquat","legcurl_st","calfpress","chestlying","declinechest","pecbent","lateralm2","latm","highrow","lowrow","tbarm","shrugm","abslying","cablehi","cablelo","dipmach","revfly","abductm","adductm","deadliftm"];
 const profiles = [
   ["Einsteiger, 2 Tage, 60 Min, Studio", {goal:"muskel",level:"beg",days:2,minutes:60,equipment:ALL}],
@@ -21,7 +23,9 @@ const profiles = [
   ["Neue Maschinen, 4 Tage, 60 Min", {goal:"muskel",level:"int",days:4,minutes:60,equipment:MACH}],
   ["Neue Maschinen, Einsteiger, 3 Tage", {goal:"muskel",level:"beg",days:3,minutes:60,equipment:MACH}],
   ["Nur hoher + tiefer Kabelzug + KH", {goal:"muskel",level:"int",days:3,minutes:60,equipment:["cablehi","cablelo","db","bench"]}],
-  ["Power Tower + Landmine + Rack", {goal:"kraft",level:"int",days:3,minutes:75,equipment:["rack","bench","landmine","vkr"]}]
+  ["Power Tower + Landmine + Rack", {goal:"kraft",level:"int",days:3,minutes:75,equipment:["rack","bench","landmine","vkr"]}],
+  ["FitX belegt, 4 Tage, 60 Min", {goal:"muskel",level:"int",days:4,minutes:60,equipment:FITX_B}],
+  ["FitX typisch, 5 Tage, 75 Min", {goal:"muskel",level:"adv",days:5,minutes:75,equipment:FITX_T}]
 ];
 const verbose = process.argv.includes("-v");
 let fails = 0;
@@ -78,5 +82,11 @@ const log2 = P.adapt(plan, 0, w, "leicht", () => 40, "2026-W44"); console.log("g
 // Geräte-Logik: voller Kabelzug ersetzt hohen und tiefen, einzelner Turm nicht umgekehrt
 const okImp = P.hasNeed("cablehi", new Set(["cable2"])) && P.hasNeed("cablelo", new Set(["cableadj"])) && !P.hasNeed("cable", new Set(["cablehi"]));
 console.log("Kabel-Logik:", okImp ? "ok" : "FEHLER"); if (!okImp) fails++;
+// Ausdauerübungen werden nie automatisch eingeplant; jede Übung hat gültige Muskeln
+const cardioPlanned = profiles.some(([l, o]) => P.generate(o).days.some(d => d.items.some(i => P.isCardio(i.ex))));
+const badMus = P.EX.filter(e => !P.MUSN[e.m] || Object.keys(e.s).some(m => !P.MUSN[m])).map(e => e.id);
+console.log("Ausdauer nicht eingeplant:", cardioPlanned ? "FEHLER" : "ok", "| Muskeln gültig:", badMus.length ? "FEHLER " + badMus : "ok"); if (cardioPlanned || badMus.length) fails++;
+// gym80: jedes Modell hat Nummer, Namen, Serie
+const badG = GER.GYM80.filter(g => !g.nr || !g.name || !g.series); console.log("gym80-Datensätze vollständig:", badG.length ? "FEHLER" : `ok (${GER.GYM80.length} Modelle, ${GER.GYM80.filter(g => !g.eq.length).length} bewusst nicht zugeordnet)`); if (badG.length) fails++;
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 
