@@ -86,6 +86,10 @@ console.log("Kabel-Logik:", okImp ? "ok" : "FEHLER"); if (!okImp) fails++;
 const cardioPlanned = profiles.some(([l, o]) => P.generate(o).days.some(d => d.items.some(i => P.isCardio(i.ex))));
 const badMus = P.EX.filter(e => !P.MUSN[e.m] || Object.keys(e.s).some(m => !P.MUSN[m])).map(e => e.id);
 console.log("Ausdauer nicht eingeplant:", cardioPlanned ? "FEHLER" : "ok", "| Muskeln gültig:", badMus.length ? "FEHLER " + badMus : "ok"); if (cardioPlanned || badMus.length) fails++;
+// Alle Hersteller-Modelle: eindeutige IDs, Name und Serie vorhanden
+const ids = GER.MODELS.map(m => m.id), dupM = ids.filter((x, i) => ids.indexOf(x) !== i);
+const brands = [...new Set(GER.MODELS.map(m => m.brand))].map(b => `${b} ${GER.MODELS.filter(m => m.brand === b).length}`).join(", ");
+console.log("Modelle:", dupM.length || GER.MODELS.some(m => !m.name || !m.series) ? "FEHLER" : `ok (${brands})`); if (dupM.length) fails++;
 // gym80: jedes Modell hat Nummer, Namen, Serie
 const badG = GER.GYM80.filter(g => !g.nr || !g.name || !g.series); console.log("gym80-Datensätze vollständig:", badG.length ? "FEHLER" : `ok (${GER.GYM80.length} Modelle, ${GER.GYM80.filter(g => !g.eq.length).length} bewusst nicht zugeordnet)`); if (badG.length) fails++;
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
