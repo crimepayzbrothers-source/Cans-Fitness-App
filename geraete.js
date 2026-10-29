@@ -1,4 +1,4 @@
-/* Cans Fitness App – Hersteller-Geräte und Studio-Vorlagen
+/* Cans Fitness App – Hersteller-Geräte (gym80, Technogym, Hammer Strength), FitX-Ausstattung und Studio-Vorlagen
    gym80: Bezeichnungen und Artikelnummern aus dem offiziellen gym80-Produktkatalog 2024
    (gym80 International GmbH) und gym80.de, Stand der Recherche: 29.10.2026.
    Jedes Gerät ist den allgemeinen Geräten der App zugeordnet (eq, mehrere mit "+").
@@ -99,6 +99,77 @@ const G = [
 ];
 const GYM80 = G.map(([nr, name, series, eq]) => ({nr, name, series, eq: eq ? eq.split("+") : []}));
 
+/* Technogym (laut FitX einer der Hersteller). Namen von technogym.com (Kategorien Selection 700, Selection 900,
+   Plate Loaded / Pure Strength), abgerufen 29.10.2026. Die Selection-900-Seite hat „Mehr laden“ – evtl. nicht vollständig. */
+const TG = [
+ ["Selection 700","Selection 700 Vertical Traction","latm"],["Selection 700","Selection 700 Leg Press","legpress_s"],["Selection 700","Selection 700 Low Row","rowmachine"],
+ ["Selection 700","Selection 700 Dual Leg Curl / Extension","legext+legcurl_s"],["Selection 700","Selection 700 Lat Machine","latpull"],["Selection 700","Selection 700 Dual Abductor / Adductor","abduct"],
+ ["Selection 700","Selection 700 Chest Press","chestpress"],["Selection 700","Selection 700 Abdominal Crunch","absmach"],["Selection 700","Selection 700 Lower Back","backextm"],
+ ["Selection 700","Selection 700 Leg Extension","legext"],["Selection 700","Selection 700 Leg Curl","legcurl_s"],["Selection 700","Selection 700 Shoulder Press","shoulderpress"],
+ ["Selection 700","Selection 700 Multi Hip","glutem+abductst"],["Selection 700","Selection 700 Dual Pectoral / Reverse Fly","pecdeck+revfly"],["Selection 700","Selection 700 Delts Machine","lateralm"],
+ ["Selection 900","Selection 900 Standing Calf","calf"],["Selection 900","Selection 900 Glute Press","glutem"],["Selection 900","Selection 900 Hip Thrust","hipthrust"],
+ ["Selection 900","Selection 900 Multi Flight","lateralm+revfly"],["Selection 900","Selection 900 Arm Extension","trimach"],["Selection 900","Selection 900 Adductor","adductm"],
+ ["Selection 900","Selection 900 Low Row","rowmachine"],["Selection 900","Selection 900 Lower Back","backextm"],["Selection 900","Selection 900 Shoulder Press","shoulderpress"],
+ ["Selection 900","Selection 900 Leg Extension","legext"],["Selection 900","Selection 900 Lat Machine","latpull"],["Selection 900","Selection 900 Pectoral","pecdeck"],
+ ["Selection 900","Selection 900 Total Abdominal","absmach"],["Selection 900","Selection 900 Rotary Torso","torso"],["Selection 900","Selection 900 Pulley","cablerow"],
+ ["Selection 900","Selection 900 Vertical Traction","latm"],["Selection 900","Selection 900 Leg Press","legpress_s"],["Selection 900","Selection 900 Prone Leg Curl","legcurl"],
+ ["Selection 900","Selection 900 Delts Machine","lateralm"],["Selection 900","Selection 900 Chest Press","chestpress"],["Selection 900","Selection 900 Arm Curl","preacher"],
+ ["Selection 900","Selection 900 Abdominal Crunch","absmach"],["Selection 900","Selection 900 Leg Curl","legcurl_s"],["Selection 900","Selection 900 Reverse Fly","revfly"],
+ ["Pure Strength","Pure Strength Hip Thrust","hipthrust"],["Pure Strength","Pure Strength Linear Leg Press","legpress"],["Pure Strength","Pure Strength Leg Press","legpress"],
+ ["Pure Strength","Pure Strength Hack Squat","hack"],["Pure Strength","Pure Strength Belt Squat","beltsquat"],["Pure Strength","Pure Strength Row","rowmachine"],
+ ["Pure Strength","Pure Strength Incline Chest Press","inclinechest"],["Pure Strength","Pure Strength Chest Press","chestpress"],["Pure Strength","Pure Strength Shoulder Press","shoulderpress"],
+ ["Pure Strength","Pure Strength Seated Calf","calfseated"],["Pure Strength","Pure Strength Low Row","lowrow"],["Pure Strength","Pure Strength Biceps","preacher"],
+ ["Pure Strength","Pure Strength Rear Kick","glutem"],["Pure Strength","Pure Strength Seated Dip","dipmach"],["Pure Strength","Pure Strength Deadlift","deadliftm"],
+ ["Pure Strength","Pure Strength Calf","calf"],["Pure Strength","Pure Strength Pullover","pulloverm"],["Pure Strength","Pure Strength Standing Abductor","abductst"],
+ ["Pure Strength","Pure Strength Leg Extension","legext"],["Pure Strength","Pure Strength Wide Chest Press","chestpress"],["Pure Strength","Pure Strength Standing Leg Curl","legcurl_st"],
+ ["Pure Strength","Pure Strength Pulldown","latm"],["Pure Strength","T Bar Row","tbarm"]
+];
+/* Hammer Strength Plate-Loaded (laut FitX einer der Hersteller). Namen von lifefitness.com (Hammer Strength Plate Loaded), abgerufen 29.10.2026. */
+const HS = [
+ ["Plate-Loaded Oberkörper","Iso-Lateral T-Bar Row","tbarm"],["Plate-Loaded Oberkörper","T-Bar Row","tbarm"],["Plate-Loaded Oberkörper","Iso-Lateral Bench Press","chestlying"],
+ ["Plate-Loaded Oberkörper","Abdominal / Oblique Crunch","absmach"],["Plate-Loaded Oberkörper","Plate Loaded Gripper","forearmm"],["Plate-Loaded Oberkörper","Iso-Lateral Chest / Back","chestpress+rowmachine"],
+ ["Plate-Loaded Oberkörper","Iso-Lateral D.Y. Row","rowmachine"],["Plate-Loaded Oberkörper","Iso-Lateral Decline Chest Press","declinechest"],["Plate-Loaded Oberkörper","Iso-Lateral Front Lat Pulldown","latm"],
+ ["Plate-Loaded Oberkörper","Iso-Lateral High Row","highrow"],["Plate-Loaded Oberkörper","Iso-Lateral Horizontal Bench Press","chestpress"],["Plate-Loaded Oberkörper","Iso-Lateral Incline Press","inclinechest"],
+ ["Plate-Loaded Oberkörper","Iso-Lateral Low Row","lowrow"],["Plate-Loaded Oberkörper","Iso-Lateral Row","rowmachine"],["Plate-Loaded Oberkörper","Iso-Lateral Shoulder Press","shoulderpress"],
+ ["Plate-Loaded Oberkörper","Iso-Lateral Super Incline Press","inclinechest"],["Plate-Loaded Oberkörper","Iso-Lateral Wide Chest","chestpress"],["Plate-Loaded Oberkörper","Iso-Lateral Wide Pulldown","latm"],
+ ["Plate-Loaded Oberkörper","Plate Loaded Lateral Raise","lateralm"],["Plate-Loaded Oberkörper","Plate Loaded Pullover","pulloverm"],["Plate-Loaded Oberkörper","Plate Loaded Seated Biceps","preacher"],
+ ["Plate-Loaded Oberkörper","Plate Loaded Seated Dip","dipmach"],["Plate-Loaded Oberkörper","Seated / Standing Shrug","shrugm"],["Plate-Loaded Oberkörper","Plate Loaded Super Fly","pecdeck"],
+ ["Plate-Loaded Oberkörper","Plate Loaded 4-Way Neck",""],
+ ["Plate-Loaded Unterkörper","Glute Ham / Reverse Hyper","ghd+revhyper"],["Plate-Loaded Unterkörper","Plate Loaded Glute Drive","hipthrust"],["Plate-Loaded Unterkörper","Plate Loaded Belt Squat","beltsquat"],
+ ["Plate-Loaded Unterkörper","Iso-Lateral Kneeling Leg Curl","legcurl_st"],["Plate-Loaded Unterkörper","Iso-Lateral Leg Curl","legcurl"],["Plate-Loaded Unterkörper","Plate Loaded Hack Squat","hack"],
+ ["Plate-Loaded Unterkörper","Plate Loaded Linear Leg Press","legpress"],["Plate-Loaded Unterkörper","Plate Loaded Seated Calf Raise","calfseated"],["Plate-Loaded Unterkörper","Plate Loaded Tibia Dorsi-Flexion","tibm"],
+ ["Plate-Loaded Unterkörper","Plate Loaded Assisted Nordic Ham","invlegcurl"],["Plate-Loaded Unterkörper","Iso-Lateral Leg Extension","legext"],["Plate-Loaded Unterkörper","Plate Loaded Reverse V-Squat","vsquat"],
+ ["Plate-Loaded Unterkörper","Plate Loaded Super Squat Press","levsquat"],["Plate-Loaded Unterkörper","Plate Loaded Pendulum-X Squat","pendulum"],
+ ["Ground Base","Ground Base Jammer","viking"],["Ground Base","Ground Base Combo Twist","torso"],["Ground Base","Ground Base Squat / High Pull","levsquat"],["Ground Base","Ground Base Multi-Squat","levsquat"]
+];
+/* FitX-Ausstattung einzeln: status "belegt" = auf fitx.de genannt, "typisch" = üblich, für FitX nicht einzeln bestätigt */
+const FX = [
+ ["belegt","Kurzhanteln bis 60 kg","db"],["belegt","Langhanteln und Gewichtsscheiben bis 20 kg","rack"],["belegt","Bänke","bench+incline"],["belegt","Kabelzüge / Kabeltürme","cable"],
+ ["belegt","Ruderzug","cablerow"],["belegt","Beinpresse","legpress"],["belegt","Brustpresse","chestpress"],["belegt","Plate-Loaded-Brustpresse schräg","inclinechest"],["belegt","Trizepsmaschine","trimach"],
+ ["belegt","Kettlebells","kb"],["belegt","Medizinbälle","medball"],["belegt","Sandbags","sandbag"],["belegt","Battle Ropes","battlerope"],["belegt","Sprossenleitern","wallbars"],["belegt","Ringe","rings"],["belegt","Plyo-Boxen","plyobox"],
+ ["belegt","Laufband","treadmill"],["belegt","Crosstrainer","crosstrainer"],["belegt","Rudergerät","rower"],["belegt","Stair Climber","stair"],
+ ["typisch","Indoor-Bikes (Kurs „tour de x“)","bike"],["typisch","SZ-Stange","ez"],["typisch","Doppelter Kabelzug","cable2"],["typisch","Latzug","latpull"],["typisch","Hackenschmidt","hack"],
+ ["typisch","Beinstrecker","legext"],["typisch","Beinbeuger liegend","legcurl"],["typisch","Beinbeuger sitzend","legcurl_s"],["typisch","Butterfly / Reverse Butterfly","pecdeck+revfly"],
+ ["typisch","Schulterpresse","shoulderpress"],["typisch","Seitheben-Maschine","lateralm"],["typisch","Bizepsmaschine","preacher"],["typisch","Abduktor/Adduktor","abduct"],
+ ["typisch","Wadenmaschine stehend","calf"],["typisch","Wadenheben sitzend","calfseated"],["typisch","Hip-Thrust-Maschine","hipthrust"],["typisch","Glute-Kickback-Maschine","glutem"],
+ ["typisch","Multipresse","smith"],["typisch","Klimmzugstange","pullup"],["typisch","Dipbarren","dip"],["typisch","Klimmzug-/Dip-Assistent","assist"],["typisch","Hyperextension-Bank","backext"],
+ ["typisch","Bauchmaschine","absmach"],["typisch","Rudermaschine (brustgestützt)","rowmachine"]
+];
+const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/* Alle wählbaren Modelle in einer Liste: id, Hersteller, Serie, Name, (Nr.), zugeordnete App-Geräte */
+const MODELS = [
+ ...GYM80.map(g => ({id: "gym80:" + g.nr, brand: "gym80", series: g.series, name: g.name, nr: g.nr, eq: g.eq})),
+ ...TG.map(([series, name, eq]) => ({id: "tg:" + slug(name), brand: "technogym", series, name, eq: eq ? eq.split("+") : []})),
+ ...HS.map(([series, name, eq]) => ({id: "hs:" + slug(name), brand: "hammer", series, name, eq: eq ? eq.split("+") : []})),
+ ...FX.map(([status, name, eq]) => ({id: "fitx:" + slug(name), brand: "fitx", series: status === "belegt" ? "Belegt (fitx.de)" : "Typisch (nicht bestätigt)", status, name, eq: eq ? eq.split("+") : []}))
+];
+const BRANDS = [
+ {id: "fitx", name: "FitX", note: "Auf fitx.de genannte Ausstattung („belegt“) und übliche, aber nicht einzeln bestätigte Ausstattung („typisch“). Laut FitX stammen die Geräte von Technogym und Hammer Strength – die konkreten Modelle wählst du in den jeweiligen Reitern. Die Ausstattung unterscheidet sich je nach Standort.", src: "fitx.de, abgerufen 29.10.2026"},
+ {id: "gym80", name: "gym80", note: "Offizielle Bezeichnungen und Artikelnummern aus dem gym80-Produktkatalog 2024.", src: "gym80 Produktkatalog 2024, gym80.de"},
+ {id: "technogym", name: "Technogym", note: "Selection 700, Selection 900 und Pure Strength laut technogym.com. Die Selection-900-Liste ist evtl. nicht vollständig.", src: "technogym.com, abgerufen 29.10.2026"},
+ {id: "hammer", name: "Hammer Strength", note: "Plate-Loaded-Linie laut Hersteller (Life Fitness).", src: "lifefitness.com, abgerufen 29.10.2026"}
+];
+
 /* Studio-Vorlagen. "belegt" = auf offiziellen FitX-Seiten genannt; "typisch" = in Studios dieser Größe üblich,
    für FitX aber nicht einzeln bestätigt. Quellen: fitx.de (Trainingsbereiche, Freihantel, Studioseiten), abgerufen 29.10.2026. */
 const STUDIOS = [
@@ -109,6 +180,6 @@ const STUDIOS = [
   note: "Belegte Ausstattung plus Geräte, die in großen Studios mit „über 60 Profigeräten“ üblich sind, für FitX aber nicht einzeln bestätigt: z. B. Latzug, Beinstrecker, Beinbeuger, Butterfly, Schulterpresse, Waden- und Abduktorenmaschine, Multipresse, Klimmzug- und Dipstation, Indoor-Bikes (Kurs „tour de x“). Bitte im eigenen Studio prüfen und abwählen, was fehlt.",
   eq: ["db","rack","ez","bench","incline","cable","cable2","cablerow","latpull","legpress","hack","legext","legcurl","legcurl_s","chestpress","inclinechest","pecdeck","revfly","shoulderpress","lateralm","trimach","preacher","abduct","calf","calfseated","hipthrust","glutem","smith","pullup","dip","assist","backext","absmach","rowmachine","kb","medball","sandbag","battlerope","wallbars","rings","plyobox","treadmill","crosstrainer","rower","stair","bike"]}
 ];
-const API = {GYM80, STUDIOS};
+const API = {GYM80, STUDIOS, MODELS, BRANDS};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Geraete = API;
 })(typeof window !== "undefined" ? window : this);

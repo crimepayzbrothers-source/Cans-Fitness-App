@@ -121,7 +121,8 @@ nav.tabs a.on{color:var(--accent)}
 .eq .eqi{position:absolute;top:5px;left:7px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:14px;color:var(--accent2);background:rgba(47,140,255,.12)}
 .eq.via{border-color:rgba(47,140,255,.45);border-style:dashed}
 .eq.via .ck{border-color:var(--accent);color:var(--accent2);font-weight:700}
-.li.g80{gap:10px}.g80ck{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--edge);display:grid;place-items:center;flex:none;font-size:13px}
+.li.g80{gap:10px}
+.gymtabs{grid-auto-columns:max-content}.gymtabs button{white-space:nowrap;padding:9px 12px}.g80ck{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--edge);display:grid;place-items:center;flex:none;font-size:13px}
 .li.g80.on .g80ck{background:var(--accent);border-color:var(--accent);color:#fff}
 
 /* plan */
@@ -430,10 +431,10 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=20"></script>
-<script src="ai.js?v=20"></script>
-<script src="figure.js?v=20"></script>
-<script src="geraete.js?v=1"></script>
+<script src="planner.js?v=21"></script>
+<script src="ai.js?v=21"></script>
+<script src="figure.js?v=21"></script>
+<script src="geraete.js?v=2"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -559,10 +560,12 @@ const EX=PL.EX, EXMAP=PL.EXMAP, hasNeed=PL.hasNeed;
 const MUS=Object.fromEntries(Object.entries(PL.PAT).map(([k,v])=>[k,PL.MUSN[v[0]]]));
 function mainEq(ex){if(!ex||!ex.need)return"";return ex.need.split("+")[0].split("|")[0]}
 /* Verfügbare Geräte = eigene Auswahl + Geräte, die über gewählte Hersteller-Modelle (gym80) abgedeckt sind */
-const GYM80=(window.Geraete&&Geraete.GYM80)||[],STUDIOS=(window.Geraete&&Geraete.STUDIOS)||[];
-const G80MAP=Object.fromEntries(GYM80.map(g=>[g.nr,g]));
-function viaGym80(){const s=new Set();(M.gym80||[]).forEach(nr=>{const g=G80MAP[nr];if(g)g.eq.forEach(e=>s.add(e))});return s}
-function myEquipment(){return[...new Set([...(M.equipment||[]),...viaGym80()])]}
+const GER=window.Geraete||{},MODELS=GER.MODELS||[],BRANDS=GER.BRANDS||[],STUDIOS=GER.STUDIOS||[];
+const MODMAP=Object.fromEntries(MODELS.map(m=>[m.id,m]));
+/* Geräte, die über gewählte Modelle (FitX, gym80, Technogym, Hammer Strength) abgedeckt sind */
+function viaModels(){const s=new Set();(M.models||[]).forEach(id=>{const m=MODMAP[id];if(m)m.eq.forEach(e=>s.add(e))});return s}
+const viaGym80=viaModels;
+function myEquipment(){return[...new Set([...(M.equipment||[]),...viaModels()])]}
 function planEquip(){const o=M.plan&&M.plan.opts;return o&&o.loc==="home"?(M.homeEquipment||[]):myEquipment()}
 /* Übungen, für die ein Gerät gebraucht wird (direkt oder als Ersatz, z. B. Kabelzug für hohen/tiefen Zug) */
 function exForEq(id){return EX.filter(x=>{const t=(x.need||"").split(/[+|]/);return t.includes(id)||t.some(k=>(PL.IMPLIED[k]||[]).includes(id))})}
@@ -727,31 +730,43 @@ const camIcon=(s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill=
 const scanIcon=(s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>`;
 
 function vGym(){
- const own=new Set(M.equipment),via=viaGym80(),set=new Set(myEquipment());const n=EX.filter(e=>hasNeed(e.need,set)).length;
- const g80=new Set(M.gym80||[]);const series=[...new Set(GYM80.map(g=>g.series))];
+ const own=new Set(M.equipment),via=viaModels(),set=new Set(myEquipment());const n=EX.filter(e=>hasNeed(e.need,set)).length;
+ const tab=UI.gymTab||"types",chosen=new Set(M.models||[]);
+ const cnt=b=>MODELS.filter(m=>m.brand===b&&chosen.has(m.id)).length;
+ const tabs=[["types","Gerätetypen"],...BRANDS.map(b=>[b.id,b.name+(cnt(b.id)?` (${cnt(b.id)})`:"")])];
  return`<div class="section">
- <div><h2>Mein Studio</h2><p class="muted small" style="margin:4px 0 0">Tippe an, was dein Studio hat. Der Planer nimmt nur Übungen, die du dort machen kannst. Über ⓘ siehst du, welche Übungen ein Gerät ermöglicht.</p></div>
- <div class="row wrapr"><span class="tag">${set.size} von ${EQ.length} Geräten</span><span class="tag">${n} Übungen möglich</span>${g80.size?`<span class="tag acc">${g80.size} gym80-Modelle</span>`:""}<span class="grow"></span><button class="btn sm ghost" data-act="eqAll">Alle</button><button class="btn sm ghost" data-act="eqNone">Keine</button></div>
- <div class="card stack" style="gap:8px"><div class="lbl">Vorlage für dein Studio</div><div class="chips">${STUDIOS.map(st=>`<button class="chip" data-act="studioPreset" data-id="${st.id}">${esc(st.name)}</button>`).join("")}</div><div class="small muted">Die Ausstattung unterscheidet sich je nach Standort. Eine Vorlage ist ein Startpunkt – prüfe sie in deinem Studio.</div></div>
- <input type="search" id="gymQ" placeholder="Gerät suchen (z. B. Beinpresse, 3020, Pure Kraft)" autocomplete="off" value="${esc(UI.gymQ||"")}">
- ${Object.entries(EQG).map(([g,t])=>{const l=EQ.filter(e=>e.g===g);return`<div class="eqgroup" data-g="${g}"><div class="row" style="padding-top:6px"><h3 class="grow">${t}</h3><span class="small muted">${l.filter(e=>set.has(e.id)).length} / ${l.length}</span></div>
- <div class="eqgrid">${l.map(e=>{const on=own.has(e.id),vg=!on&&via.has(e.id);return`<button class="eq ${on?"on":""} ${vg?"via":""}" data-act="eq" data-id="${e.id}" data-s="${esc((e.n+" "+e.id).toLowerCase())}" aria-pressed="${on}"><span class="ck">${on?"✓":vg?"g":""}</span><span class="eqi" data-act="eqInfo" data-id="${e.id}" role="button" aria-label="Übungen mit ${esc(e.n)}">ⓘ</span>${eqSvg(e.id)}<span class="nm">${e.n}</span>${vg?`<span class="small muted">über gym80</span>`:""}</button>`}).join("")}</div></div>`}).join("")}
- <details class="more card" id="g80box" ${UI.g80open||UI.gymQ?"open":""}><summary>gym80-Geräte (${g80.size} gewählt)</summary>
-  <div class="small muted" style="padding:6px 0">Offizielle Bezeichnungen und Artikelnummern aus dem gym80-Produktkatalog. Gewählte Modelle schalten die passenden Geräte und Übungen frei. Modelle mit „nicht zugeordnet“ haben einen Bewegungsablauf, der aus den Quellen nicht eindeutig hervorgeht.</div>
-  ${series.map(sr=>`<div class="g80s" data-sr="${esc(sr)}"><div class="lbl" style="padding-top:10px">${esc(sr)}</div><div class="list">${GYM80.filter(g=>g.series===sr).map(g=>`<button class="li g80 ${g80.has(g.nr)?"on":""}" data-act="g80" data-nr="${g.nr}" data-s="${esc((g.nr+" "+g.name+" "+sr+" "+g.eq.map(e=>EQMAP[e]?EQMAP[e].n:"").join(" ")).toLowerCase())}"><span class="g80ck">${g80.has(g.nr)?"✓":""}</span><div class="n"><div><span class="num muted small">${g.nr}</span> ${esc(g.name)}</div><div class="small muted">${g.eq.length?"→ "+g.eq.map(e=>EQMAP[e]?EQMAP[e].n:e).join(", "):"nicht zugeordnet"}</div></div></button>`).join("")}</div></div>`).join("")}
- </details>
- <p class="small muted">Übungen mit Körpergewicht sind immer dabei. Ein Kabelzug (Station, doppelt oder verstellbar) zählt auch als hoher und tiefer Kabelzug. „g“ = durch ein gewähltes gym80-Modell abgedeckt.</p></div>`;
+ <div><h2>Mein Studio</h2><p class="muted small" style="margin:4px 0 0">Wähle Gerätetypen oder die konkreten Modelle deines Studios. Der Planer und alle Übungslisten nutzen nur, was du hier auswählst.</p></div>
+ <div class="row wrapr"><span class="tag">${set.size} von ${EQ.length} Gerätetypen</span><span class="tag">${n} von ${EX.length} Übungen möglich</span>${chosen.size?`<span class="tag acc">${chosen.size} Modelle</span>`:""}</div>
+ <div class="seg gymtabs" style="overflow-x:auto">${tabs.map(([k,l])=>`<button class="${tab===k?"on":""}" data-act="gymTab" data-t="${k}">${esc(l)}</button>`).join("")}</div>
+ <input type="search" id="gymQ" placeholder="${tab==="types"?"Gerät suchen (z. B. Beinpresse)":"Modell suchen (Name, Nummer, Gerätetyp)"}" autocomplete="off" value="${esc(UI.gymQ||"")}">
+ ${tab==="types"?gymTypes(own,via,set):gymBrand(tab,chosen)}
+ <p class="small muted">Übungen mit Körpergewicht sind immer dabei. Ein Kabelzug (Station, doppelt oder verstellbar) zählt auch als hoher und tiefer Kabelzug. „M“ = durch ein gewähltes Modell abgedeckt.</p></div>`;
 }
+function gymTypes(own,via,set){
+ return`<div class="row"><span class="grow small muted">Tippe an, was dein Studio hat. ⓘ zeigt die möglichen Übungen.</span><button class="btn sm ghost" data-act="eqAll">Alle</button><button class="btn sm ghost" data-act="eqNone">Keine</button></div>
+ ${Object.entries(EQG).map(([g,t])=>{const l=EQ.filter(e=>e.g===g);return`<div class="eqgroup" data-g="${g}"><div class="row" style="padding-top:6px"><h3 class="grow">${t}</h3><span class="small muted">${l.filter(e=>set.has(e.id)).length} / ${l.length}</span></div>
+ <div class="eqgrid">${l.map(e=>{const on=own.has(e.id),vg=!on&&via.has(e.id);return`<button class="eq ${on?"on":""} ${vg?"via":""}" data-act="eq" data-id="${e.id}" data-s="${esc((e.n+" "+e.id).toLowerCase())}" aria-pressed="${on}"><span class="ck">${on?"✓":vg?"M":""}</span><span class="eqi" data-act="eqInfo" data-id="${e.id}" role="button" aria-label="Übungen mit ${esc(e.n)}">ⓘ</span>${eqSvg(e.id)}<span class="nm">${e.n}</span>${vg?`<span class="small muted">über Modell</span>`:""}</button>`}).join("")}</div></div>`}).join("")}`;
+}
+function gymBrand(b,chosen){
+ const br=BRANDS.find(x=>x.id===b)||{};const all=MODELS.filter(m=>m.brand===b);const series=[...new Set(all.map(m=>m.series))];
+ const fs=(UI.gymSeries||{})[b]||"";const list=all.filter(m=>!fs||m.series===fs);
+ const before=new Set(myEquipment());
+ return`<div class="card stack" style="gap:6px"><div class="small">${esc(br.note||"")}</div><div class="small muted">Quelle: ${esc(br.src||"")}</div></div>
+ <div class="chips"><button class="chip ${fs?"":"on"}" data-act="gymSeries" data-b="${b}" data-v="">Alle (${all.length})</button>${series.map(sr=>`<button class="chip ${fs===sr?"on":""}" data-act="gymSeries" data-b="${b}" data-v="${esc(sr)}">${esc(sr)} (${all.filter(m=>m.series===sr).length})</button>`).join("")}</div>
+ <div class="row wrapr"><span class="grow small muted"><b id="mcount">${list.filter(m=>chosen.has(m.id)).length}</b> von ${list.length} gewählt</span><button class="btn sm ghost" data-act="modelsSel" data-b="${b}" data-v="1">Alle sichtbaren wählen</button><button class="btn sm ghost" data-act="modelsSel" data-b="${b}" data-v="0">Abwählen</button></div>
+ ${series.filter(sr=>!fs||sr===fs).map(sr=>`<div class="g80s" data-sr="${esc(sr)}"><div class="lbl" style="padding-top:8px">${esc(sr)}</div><div class="card list" style="padding:2px 12px">${all.filter(m=>m.series===sr).map(m=>`<button class="li g80 ${chosen.has(m.id)?"on":""}" data-act="model" data-id="${esc(m.id)}" data-s="${esc(((m.nr||"")+" "+m.name+" "+sr+" "+m.eq.map(e=>EQMAP[e]?EQMAP[e].n:"").join(" ")).toLowerCase())}"><span class="g80ck">${chosen.has(m.id)?"✓":""}</span><div class="n"><div>${m.nr?`<span class="num muted small">${esc(m.nr)}</span> `:""}${esc(m.name)}</div><div class="small muted">${m.eq.length?"→ "+m.eq.map(e=>EQMAP[e]?EQMAP[e].n:e).join(", ")+" · "+exForEqSet(m.eq).length+" Übungen":"nicht zugeordnet (Bewegung aus Quellen nicht eindeutig)"}</div></div></button>`).join("")}</div></div>`).join("")}`;
+}
+function exForEqSet(eqs){const s=new Set();eqs.forEach(id=>exForEq(id).forEach(x=>s.add(x.id)));return[...s]}
 /* Gerät im Detail: welche Übungen damit möglich sind, welche gym80-Modelle dazu passen */
 function eqInfoSheet(id){
  const e=EQMAP[id];if(!e)return;SH={eqInfo:id};const mine=new Set(myEquipment());const withIt=new Set([...mine,id]);
  const exs=exForEq(id),groups={};exs.forEach(x=>(groups[PL.MUSN[x.m]]=groups[PL.MUSN[x.m]]||[]).push(x));
- const models=GYM80.filter(g=>g.eq.includes(id));const on=(M.equipment||[]).includes(id);
+ const models=MODELS.filter(g=>g.eq.includes(id));const on=(M.equipment||[]).includes(id);const chosenM=new Set(M.models||[]);
  openSheet(`${sheetHd(esc(e.n))}<div class="stack">
  <div class="row"><div class="thumb" style="width:72px;height:60px">${eqSvg(id,"eqthumb")}</div><div class="grow small muted">${exs.length} Übungen nutzen dieses Gerät. Muskeln: ${[...new Set(exs.map(x=>PL.MUSN[x.m]))].join(", ")}.</div></div>
  <button class="btn ${on?"ghost":"primary"} block" data-act="eqToggleInfo" data-id="${id}">${on?"✓ In meinem Studio – entfernen":"Zu meinem Studio hinzufügen"}</button>
  ${Object.entries(groups).map(([g,l])=>`<div class="lbl" style="padding-top:6px">${g}</div><div class="card list" style="padding:4px 12px">${l.map(x=>{const ok=hasNeed(x.need,withIt);return`<button class="li" data-act="exInfo" data-id="${x.id}">${exMini(x)}<div class="n"><div>${esc(x.n)}</div><div class="small muted">${ok?(hasNeed(x.need,mine)?"mit deinen Geräten möglich":"möglich, sobald das Gerät gewählt ist"):"braucht zusätzlich: "+esc(missingFor(x.need,withIt))}</div></div>${svgI.chev}</button>`}).join("")}</div>`).join("")}
- ${models.length?`<details class="more card"><summary>Passende gym80-Modelle (${models.length})</summary><div class="small" style="padding-top:6px">${models.map(g=>`<div class="kv"><span class="num muted">${g.nr}</span><span style="text-align:right">${esc(g.name)}</span></div>`).join("")}</div></details>`:""}
+ ${models.length?`<details class="more card"><summary>Passende Modelle (${models.length}) – antippen zum Wählen</summary><div class="list" style="padding-top:6px">${BRANDS.map(b=>{const l=models.filter(m=>m.brand===b.id);return l.length?`<div class="lbl" style="padding-top:8px">${esc(b.name)}</div>${l.map(m=>`<button class="li g80 ${chosenM.has(m.id)?"on":""}" data-act="modelInfo" data-id="${esc(m.id)}" data-eq="${id}"><span class="g80ck">${chosenM.has(m.id)?"✓":""}</span><div class="n"><div>${m.nr?`<span class="num muted small">${esc(m.nr)}</span> `:""}${esc(m.name)}</div><div class="small muted">${esc(m.series)}</div></div></button>`).join("")}`:""}).join("")}</div></details>`:""}
  </div>`,SH);
 }
 function missingFor(need,set){const alts=need.split("+").filter(p=>!p.split("|").some(x=>PL.hasEq(x,set)));return alts.map(p=>p.split("|").map(x=>EQMAP[x]?EQMAP[x].n:x).join(" oder ")).join(" und ")}
@@ -1163,7 +1178,34 @@ function savePlanFromWiz(){
  const p=SH.preview;if(!p)return;const old=M.plan;
  p.id="p"+uid();p.created=today();p.meso.start=today();p.log=[{d:today(),t:"Plan erstellt."}];
  if(old)p.days.forEach(d=>d.items.forEach(it=>{for(const od of old.days)for(const oi of od.items)if(oi.ex===it.ex&&oi.kg&&!it.kg)it.kg=oi.kg}));
+ p.eqAvail=availCount();
  M.plan=p;persist("main");closeSheet();if(location.hash!=="#plan")location.hash="#plan";else render();toast("Plan gespeichert");
+}
+/* ---------- Plan folgt der Geräteauswahl ---------- */
+function it0m(di,ii){const it=M.plan&&M.plan.days[di]&&M.plan.days[di].items[ii];if(!it)return"";if(it.missing)return`<div class="small" style="color:var(--warn)">Gerät fehlt – wird übersprungen</div>`;if(it.orig&&EXMAP[it.orig])return`<div class="small muted">statt ${esc(EXMAP[it.orig].n)} (Gerät nicht gewählt)</div>`;return""}
+function availCount(){const s=new Set(planEquip());return EX.filter(e=>hasNeed(e.need,s)).length}
+/* Prüft jede Plan-Übung gegen die aktuellen Geräte: tauscht nicht mögliche gegen die beste Alternative (gleicher Muskel,
+   möglichst gleiches Bewegungsmuster), tauscht zurück, sobald das ursprüngliche Gerät wieder verfügbar ist,
+   und markiert Übungen ohne Alternative. */
+function syncPlanToEquipment(){
+ const P=M.plan,out={swapped:[],back:[],missing:[]};if(!P||P.v!==2)return out;
+ const set=new Set(planEquip());
+ P.days.forEach((d,di)=>d.items.forEach((it,ii)=>{
+  const ex=EXMAP[it.ex];if(!ex)return;
+  // ursprüngliche Übung wieder möglich? zurücktauschen
+  if(it.orig&&EXMAP[it.orig]&&hasNeed(EXMAP[it.orig].need,set)&&!d.items.some(x=>x!==it&&x.ex===it.orig)){const o=it.orig,ok=it.origKg;swapItem(di,ii,o,"Gerät wieder verfügbar");it.kg=ok||null;delete it.orig;delete it.origKg;out.back.push(EXMAP[o].n);return}
+  if(hasNeed(ex.need,set)){if(it.missing)delete it.missing;return}
+  const alt=altList(ex,d).find(a=>hasNeed(a.need,set));
+  if(alt){const o=it.orig||it.ex,ok=it.orig?it.origKg:it.kg;swapItem(di,ii,alt.id,"Gerät nicht verfügbar");it.orig=o;it.origKg=ok||null;delete it.missing;out.swapped.push(`${ex.n} → ${alt.n}`)}
+  else{if(!it.missing)out.missing.push(ex.n);it.missing=true}
+ }));
+ return out;
+}
+/* Nach jeder Änderung der Geräte: speichern, Plan anpassen, neu zeichnen, kurz melden */
+function equipChanged(quiet){
+ const r=syncPlanToEquipment();persist("main");const y=window.scrollY;render();window.scrollTo(0,y);
+ const parts=[];if(r.swapped.length)parts.push(`${r.swapped.length} getauscht`);if(r.back.length)parts.push(`${r.back.length} zurückgetauscht`);if(r.missing.length)parts.push(`${r.missing.length} ohne Alternative`);
+ if(parts.length)toast("Plan angepasst: "+parts.join(", "));else if(!quiet)toast(`${availCount()} Übungen möglich`);
 }
 
 function altList(ex,day){if(!ex)return[];const fav=new Set((M.prefs&&M.prefs.fav)||[]);const inDay=new Set(day.items.map(i=>i.ex));return availEx().filter(e=>e.m===ex.m&&e.id!==ex.id&&!inDay.has(e.id)).sort((a,b)=>((a.pat===ex.pat?0:5)+a.rank-(fav.has(a.id)?3:0))-((b.pat===ex.pat?0:5)+b.rank-(fav.has(b.id)?3:0)))}
@@ -1204,7 +1246,8 @@ function startWorkout(di){
  if(M.active){location.hash="#training";toast("Es läuft schon ein Training.");return}
  const P=M.plan,d=di>=0&&P?P.days[di]:null,st=planState();
  M.active={id:"w"+uid(),date:today(),start:Date.now(),dayName:d?d.name:"Freies Training",planDay:d?di:null,planId:d&&P.id||null,deload:!!(st&&st.deload),
-  exercises:d?d.items.map(it0=>{const it=itemView(it0,st);return newExEntry(it.ex,{sets:it.sets,repMin:it.repMin,repMax:it.repMax,rir:it.rir,rest:it.rest||90,kg:it.kg||null})}):[]};
+  exercises:d?d.items.filter(it0=>!it0.missing).map(it0=>{const it=itemView(it0,st);return newExEntry(it.ex,{sets:it.sets,repMin:it.repMin,repMax:it.repMax,rir:it.rir,rest:it.rest||90,kg:it.kg||null})}):[]};
+ const skipped=d?d.items.filter(it=>it.missing).length:0;if(skipped)setTimeout(()=>toast(`${skipped} Übung${skipped>1?"en":""} übersprungen – Gerät nicht verfügbar`),400);
  persist("main");keepAwake();if(location.hash!=="#training")location.hash="#training";else render();
 }
 function finishWorkout(){
@@ -1402,6 +1445,8 @@ function planMain(){
  ${P.suggestDeload&&!(st&&st.deload)?`<div class="banner warn"><div class="grow">Die letzten Einheiten waren hart oder die Leistung ist gesunken. Eine Deload-Woche hilft.</div><button class="btn sm" data-act="deloadNow">Deload</button></div>`:""}
  ${pains.map(p=>`<button class="banner warn" data-act="item" data-d="${p.di}" data-i="${p.ii}" style="text-align:left;width:100%"><div class="grow">Beschwerden bei <b>${esc(EXMAP[p.it.ex].n)}</b>. Tippen zum Tauschen.</div>${svgI.chev}</button>`).join("")}
  ${(P.warnings||[]).map(w=>`<div class="banner warn"><div class="grow">${esc(w)}</div></div>`).join("")}
+ ${(()=>{const miss=[];P.days.forEach(d=>d.items.forEach(it=>{if(it.missing)miss.push(it)}));if(!miss.length)return"";const names=[...new Set(miss.map(it=>EXMAP[it.ex]?EXMAP[it.ex].n:it.ex))];return`<div class="banner warn"><div class="grow"><b>${miss.length} ${miss.length===1?"Übung ist":"Übungen sind"} mit deinen Geräten nicht möglich</b> und es gibt keine Alternative: ${esc(names.slice(0,6).join(", "))}${names.length>6?` und ${names.length-6} weitere`:""}. Sie werden beim Training übersprungen, bis du passende Geräte wählst.</div><a class="btn sm" href="#studio">Geräte</a></div>`})()}
+ ${(()=>{if(P.opts&&P.opts.loc==="home")return"";const now=availCount(),was=P.eqAvail;if(was==null||now-was<5)return"";return`<div class="banner good"><div class="grow">Mit deinen neuen Geräten sind ${now-was} Übungen mehr möglich. Neu berechnen nutzt die zusätzlichen Geräte für einen passenderen Plan.</div><div class="stack" style="gap:6px"><button class="btn sm primary" data-act="gen">Neu berechnen</button><button class="btn sm ghost" data-act="eqAck">Später</button></div></div>`})()}
  <div class="daylist">${P.days.map((d,di)=>{const w=sc[di];const isNext=di===up.di&&!doneW.has(di);const ms=dayMuscles(d);const its=d.items.map(it=>itemView(it,st));
   return`<button class="dayrow ${isNext?"next":""}" data-act="dayOpen" data-d="${di}"><div class="wdl">${w!=null?WD[w]:di+1}</div>${thumb(ms)}<div class="grow" style="min-width:0">${isNext?`<div class="lbl acc">${w===tw?"Heute":"Als Nächstes"}</div>`:doneW.has(di)?`<div class="lbl" style="color:var(--f)">Erledigt ✓</div>`:""}<b>${esc(d.name)}</b><div class="small muted ell">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div><div class="small muted">${d.items.length} Übungen · ${PL.estMinutes(its)} Min</div></div>${svgI.chev}</button>`}).join("")}</div>
  <details class="more card"><summary>Sätze pro Woche je Muskel</summary><div class="stack" style="gap:4px;padding-top:6px">
@@ -1440,7 +1485,7 @@ function vDay(){
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
  ${UI.sortDay===di?sortList(di,its):`<div class="listhd"><div class="lbl grow">Übungen</div>${its.length>1?`<button class="btn sm ghost pill" data-act="sortOn" data-d="${di}">↕ Reihenfolge ändern</button>`:""}</div>
- <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b><div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
+ <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b>${it0m(di,ii)}<div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
  <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
  <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div>`}</div>`;
@@ -1918,15 +1963,21 @@ document.addEventListener("click",e=>{
   persist("days/"+UI.date);closeSheet();render();break}
  case"delEntry":DAYS[UI.date].meals[SH.meal].splice(SH.entryIdx,1);persist("days/"+UI.date);closeSheet();render();break;
  case"editEntry":{const e2=DAYS[UI.date].meals[d.m][+d.i];const p=findProduct(e2.pid)||{id:e2.pid,name:e2.name,kcal:e2.kcal,p:e2.p,c:e2.c,f:e2.f,basic:true};amountSheet(p,d.m,+d.i);break}
- case"eq":{const s=new Set(M.equipment);s.has(d.id)?s.delete(d.id):s.add(d.id);M.equipment=[...s];persist("main");const y=window.scrollY;render();window.scrollTo(0,y);break}
- case"eqAll":M.equipment=EQ.map(e=>e.id);persist("main");render();break;
+ case"eq":{const s=new Set(M.equipment);s.has(d.id)?s.delete(d.id):s.add(d.id);M.equipment=[...s];equipChanged();break}
+ case"eqAll":M.equipment=EQ.map(e=>e.id);equipChanged();break;
  case"eqInfo":eqInfoSheet(d.id);break;
- case"eqToggleInfo":{const s=new Set(M.equipment);s.has(d.id)?s.delete(d.id):s.add(d.id);M.equipment=[...s];persist("main");eqInfoSheet(d.id);render();break}
- case"g80":{const s=new Set(M.gym80||[]);s.has(d.nr)?s.delete(d.nr):s.add(d.nr);M.gym80=[...s];UI.g80open=true;persist("main");const y=window.scrollY;render();window.scrollTo(0,y);break}
+ case"eqToggleInfo":{const s=new Set(M.equipment);s.has(d.id)?s.delete(d.id):s.add(d.id);M.equipment=[...s];equipChanged(true);eqInfoSheet(d.id);break}
+ case"eqAck":if(M.plan){M.plan.eqAvail=availCount();persist("main");render()}break;
+ case"gymTab":UI.gymTab=d.t;UI.gymQ="";render();break;
+ case"gymSeries":UI.gymSeries=UI.gymSeries||{};UI.gymSeries[d.b]=d.v;render();break;
+ case"modelInfo":{const s=new Set(M.models||[]);s.has(d.id)?s.delete(d.id):s.add(d.id);M.models=[...s];equipChanged(true);eqInfoSheet(d.eq);const box=document.querySelector("#sheet details");if(box)box.open=true;break}
+ case"model":{const s=new Set(M.models||[]);s.has(d.id)?s.delete(d.id):s.add(d.id);M.models=[...s];equipChanged();break}
+ case"modelsSel":{const s=new Set(M.models||[]);const fs=(UI.gymSeries||{})[d.b]||"";const q=(UI.gymQ||"").trim().toLowerCase();
+  MODELS.filter(m=>m.brand===d.b&&(!fs||m.series===fs)).filter(m=>{if(!q)return true;const el=document.querySelector(`.li.g80[data-id="${CSS.escape(m.id)}"]`);return el&&!el.hidden}).forEach(m=>d.v==="1"?s.add(m.id):s.delete(m.id));M.models=[...s];equipChanged();break}
  case"studioPreset":studioPresetSheet(d.id);break;
- case"presetApply":{const st=STUDIOS.find(x=>x.id===SH.preset);if(!st)break;M.equipment=d.mode==="replace"?st.eq.slice():[...new Set([...(M.equipment||[]),...st.eq])];persist("main");closeSheet();render();toast(`Vorlage übernommen: ${st.eq.length} Geräte`);break}
+ case"presetApply":{const st=STUDIOS.find(x=>x.id===SH.preset);if(!st)break;M.equipment=d.mode==="replace"?st.eq.slice():[...new Set([...(M.equipment||[]),...st.eq])];closeSheet();equipChanged();break}
  case"libAvail":UI.libAvail=!UI.libAvail;render();break;
- case"eqNone":M.equipment=[];persist("main");render();break;
+ case"eqNone":M.equipment=[];equipChanged();break;
  case"gen":genSheet();break;
  case"goProfile":location.hash="#profil";break;
  case"planTab":UI.planTab=d.t;render();break;
@@ -2023,7 +2074,7 @@ document.addEventListener("input",e=>{
  else if(t.id==="exQ"){const q=t.value.trim().toLowerCase();document.querySelectorAll("#exRes .li").forEach(li=>li.hidden=!!q&&!li.dataset.s.includes(q));document.querySelectorAll("#exRes .lbl").forEach(l=>l.hidden=!!q)}
  else if(t.dataset.w&&M.active){const row=t.closest(".setrow");const s=M.active.exercises[+row.dataset.ei].sets[+row.dataset.si];s[t.dataset.w]=num(t.value);persist("main")}
 });
-function filterGym(){const q=(UI.gymQ||"").trim().toLowerCase();document.querySelectorAll(".eqgrid .eq").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".eqgroup").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".eq")].some(b=>!b.hidden));const box=$("#g80box");if(box){if(q)box.open=true;document.querySelectorAll(".li.g80").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".g80s").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".li.g80")].some(b=>!b.hidden))}}
+function filterGym(){const q=(UI.gymQ||"").trim().toLowerCase();document.querySelectorAll(".eqgrid .eq").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".eqgroup").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".eq")].some(b=>!b.hidden));document.querySelectorAll(".li.g80").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".g80s").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".li.g80")].some(b=>!b.hidden))}
 document.addEventListener("change",e=>{if(e.target.id==="libM"){UI.libM=e.target.value;render();return}if(e.target.dataset&&e.target.dataset.ai==="on"&&SH&&SH.ai){const row=e.target.closest(".airow");const it=SH.ai.result.items[+row.dataset.i];it.on=e.target.checked;row.classList.toggle("off",!it.on);updAiTot()}if(e.target.id==="statsEx"){UI.statsEx=e.target.value;render()}if(e.target.id==="itKg"&&SH&&SH.di!=null){const it=M.plan.days[SH.di].items[SH.ii];it.kg=num(e.target.value);persist("main");render()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheetwrap").hidden)closeSheet();if(e.key==="Enter"&&e.target.id==="codeIn")handleCode(e.target.value);if(e.key==="Enter"&&e.target.id==="q")offSearch(e.target.value)});
 
@@ -2044,7 +2095,7 @@ $("#importIn").addEventListener("change",async e=>{const f=e.target.files[0];e.t
  route();
  await Store.init();
  try{await Store.loadAll()}catch(e){toast("Daten konnten nicht geladen werden.")}
- M.settings=M.settings||{rest:90};M.products=M.products||{};M.weights=M.weights||[];M.prefs=M.prefs||{excluded:[],fav:[]};M.homeEquipment=M.homeEquipment||[];M.gym80=M.gym80||[];if(M.plan&&M.plan.v===2&&!M.plan.id)M.plan.id="p"+uid();
+ M.settings=M.settings||{rest:90};M.products=M.products||{};M.weights=M.weights||[];M.prefs=M.prefs||{excluded:[],fav:[]};M.homeEquipment=M.homeEquipment||[];M.models=M.models||[];if(M.gym80&&M.gym80.length){M.models=[...new Set([...M.models,...M.gym80.map(n=>"gym80:"+n)])];delete M.gym80;persist("main")}if(M.plan&&M.plan.v===2&&M.plan.eqAvail==null)M.plan.eqAvail=availCount();if(M.plan&&M.plan.v===2&&!M.plan.id)M.plan.id="p"+uid();
  if((M.eqv||1)<2){/* Geräte aufgeteilt: T-Bar und Dip-Maschine sind jetzt eigene Geräte */const es=new Set(M.equipment||[]);if(es.has("rowmachine"))es.add("tbarm");if(es.has("trimach"))es.add("dipmach");M.equipment=[...es];M.eqv=2;persist("main")}
  UI.ready=true;render();
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
