@@ -243,7 +243,7 @@ nav.tabs a{position:relative}
 .setrow.done .ok{box-shadow:0 0 12px rgba(54,211,153,.6)}
 .rb.on{box-shadow:0 0 10px rgba(47,140,255,.6)}
 .weekbar i.on{box-shadow:0 0 8px rgba(47,140,255,.7)}
-.ring svg circle:last-child{filter:drop-shadow(0 0 6px currentColor)}
+.ring svg,.wring svg,.fring svg,.pring svg{overflow:visible}
 /* Startseite */
 .greet{display:flex;align-items:flex-start;gap:12px;padding-top:4px}
 .greet .hi{font-size:16px;color:var(--muted)}
@@ -425,9 +425,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=18"></script>
-<script src="ai.js?v=18"></script>
-<script src="figure.js?v=18"></script>
+<script src="planner.js?v=19"></script>
+<script src="ai.js?v=19"></script>
+<script src="figure.js?v=19"></script>
 <script>
 "use strict";
 /* ---------- helpers ---------- */
@@ -561,6 +561,9 @@ function dataFor(rel){if(rel==="main")return clone(M);const[c,id]=rel.split("/")
 function persist(rel,now){clearTimeout(timers[rel]);const run=()=>{delete timers[rel];const data=dataFor(rel);chains[rel]=(chains[rel]||Promise.resolve()).then(()=>Store.write(rel,data)).catch(e=>{if(e&&e.code==="unavailable")setTimeout(()=>Store.write(rel,dataFor(rel)).catch(()=>toast("Speichern hat nicht geklappt. Bitte später erneut versuchen.")),1200+Math.random()*800);else if(e&&e.code==="quota_exceeded")toast("Speicher voll – alte Einträge löschen.");else toast("Speichern hat nicht geklappt.")})};if(now)run();else timers[rel]=setTimeout(run,500)}
 document.addEventListener("visibilitychange",()=>{if(document.hidden)Object.keys(timers).forEach(k=>persist(k,true))});
 
+/* Leuchten für Ringe: eigener SVG-Filter mit großzügigem festem Bereich, damit Chrome nichts abschneidet */
+let GLOWN=0;
+function ringGlow(col,vb){const id="rg"+(++GLOWN);const m=Math.round(vb*.3);return{id,defs:`<defs><filter id="${id}" filterUnits="userSpaceOnUse" x="${-m}" y="${-m}" width="${vb+2*m}" height="${vb+2*m}"><feDropShadow dx="0" dy="0" stdDeviation="${(vb/40).toFixed(1)}" flood-color="${col}" flood-opacity=".75"/></filter></defs>`,f:`filter="url(#${id})"`}}
 /* ---------- targets ---------- */
 function suggestTargets(p){const w=+p.weight||75,h=+p.height||175,a=+p.age||30;let bmr=10*w+6.25*h-5*a+(p.sex==="w"?-161:5);let tdee=bmr*(+p.activity||1.5);const adj={ab:-450,halten:0,aufbau:250}[p.goal]??0;const kcal=Math.round((tdee+adj)/10)*10;const pr=Math.round(w*(p.goal==="ab"?2.2:2));const fa=Math.round(w*.9);const ca=Math.max(0,Math.round((kcal-pr*4-fa*9)/4));return{kcal,p:pr,c:ca,f:fa}}
 function targets(){return M.profile.targets||suggestTargets(M.profile)}
@@ -631,9 +634,9 @@ function vHomeOld(){
  else hero=`<div class="card hero">${bodySvg(new Set())}<div class="txt"><div class="lbl">Heutiges Training</div><h2>Noch kein Plan</h2><div class="small muted">Erstelle in 7 Schritten einen Plan, der zu deinem Studio passt.</div></div><a class="btn glow block" href="#plan" style="position:relative">Plan erstellen →</a></div>`;
  const max=Math.max(1,...st.months.map(m=>m.v));const ticks=niceTicks(0,max/1000,3);const y1=ticks[ticks.length-1]||1;
  const W=320,H=150,L=30,B=22,Tp=10,bw=(W-L-8)/6;const Y=v=>Tp+(1-v/1000/y1)*(H-Tp-B);
- const chart=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainingsvolumen pro Monat"><defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5FB4FF"/><stop offset="1" stop-color="#1F4FD1" stop-opacity=".35"/></linearGradient></defs>
+ const chart=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainingsvolumen pro Monat"><defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5FB4FF"/><stop offset="1" stop-color="#1F4FD1" stop-opacity=".35"/></linearGradient><filter id="bgl" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#2F8CFF" flood-opacity=".8"/></filter></defs>
   ${ticks.map(v=>`<line x1="${L}" x2="${W-4}" y1="${Y(v*1000)}" y2="${Y(v*1000)}" stroke="rgba(140,170,230,.12)"/><text x="${L-6}" y="${Y(v*1000)+4}" text-anchor="end" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${fmt(v,1)}t</text>`).join("")}
-  ${st.months.map((m,i)=>`<rect x="${L+i*bw+bw*.28}" y="${Y(m.v)}" width="${bw*.44}" height="${Math.max(0,H-B-Y(m.v))}" rx="3" fill="url(#bg1)" ${i===5?'style="filter:drop-shadow(0 0 6px #2F8CFF)"':""}/><text x="${L+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${m.label}</text>`).join("")}</svg>`;
+  ${st.months.map((m,i)=>`<rect x="${L+i*bw+bw*.28}" y="${Y(m.v)}" width="${bw*.44}" height="${Math.max(0,H-B-Y(m.v))}" rx="3" fill="url(#bg1)" ${i===5?`filter="url(#bgl)"`:""}/><text x="${L+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${m.label}</text>`).join("")}</svg>`;
  const tile=(ic,v,l)=>`<div class="card tile"><div class="ic">${ic}</div><div style="min-width:0"><div class="v">${v}</div><div class="l">${l}</div></div></div>`;
  return`<div class="section">
  <div class="greet"><div class="grow"><div class="hi">${hi}</div><div class="nm">${name?esc(name):"Can"}</div></div></div>
@@ -666,7 +669,7 @@ function vFood(){
  return`<div class="section">
  <div class="daynav"><button class="iconbtn" data-act="day" data-n="-1" aria-label="Vorheriger Tag">‹</button><div class="d">${dayLabel(d)}</div><button class="iconbtn" data-act="day" data-n="1" aria-label="Nächster Tag">›</button></div>
  <div class="card sum">
-  <div class="ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--surface2)" stroke-width="11"/><circle cx="60" cy="60" r="52" fill="none" stroke="${rest<0?"var(--warn)":"var(--kcal)"}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"/></svg>
+  <div class="ring">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="11"/>${pct>0?`<circle cx="60" cy="60" r="52" fill="none" stroke="${rest<0?"var(--warn)":"var(--kcal)"}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" ${g.f}/>`:""}</svg>`)(ringGlow(rest<0?"#FFB547":"#FF6B5B",120))}
    <div class="c"><div class="big">${fmt(Math.abs(rest))}</div><div class="small muted">${rest<0?"kcal drüber":"kcal übrig"}</div></div></div>
   <div class="stack" style="gap:9px;min-width:0"><div class="small muted"><span class="num" style="color:var(--ink);font-size:18px">${fmt(t.kcal)}</span> von ${fmt(T.kcal)} kcal gegessen</div>${mb("p","Eiweiß","--p")}${mb("c","Kohlenhydrate","--c")}${mb("f","Fett","--f")}</div>
  </div>
@@ -1284,7 +1287,7 @@ function vHome(){
  return`<div class="section">
  <div class="greet"><div class="grow"><div class="hi">${hi}</div><div class="nm">${esc(name)} <span aria-hidden="true">👋</span></div><div class="small muted">Bereit, stärker zu werden?</div></div></div>
  <div class="dash">
-  <div class="card wring"><div class="rw"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" style="filter:drop-shadow(0 0 6px #2F8CFF)"/></svg><div class="c"><div class="big">${st.done}<span> / ${st.goal}</span></div><div class="small muted">Einheiten</div></div></div></div>
+  <div class="card wring"><div class="rw">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>${pct>0?`<circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" ${g.f}/>`:""}</svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><div class="big">${st.done}<span> / ${st.goal}</span></div><div class="small muted">Einheiten</div></div></div></div>
   <div class="tiles">${tile(fire,st.streak,"Tage Serie")}${tile(barsI,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}${tile(cupI,st.pbs,"Bestleistungen (30 Tage)")}</div>
  </div>
  <div class="card wdots">${dots}</div>
@@ -1297,9 +1300,9 @@ function vHome(){
 function monthBars(months){
  const max=Math.max(1,...months.map(m=>m.v));const ticks=niceTicks(0,max/1000,3);const y1=ticks[ticks.length-1]||1;
  const W=320,H=150,L=30,B=22,Tp=10,n=months.length,bw=(W-L-8)/n;const Y=v=>Tp+(1-v/1000/y1)*(H-Tp-B);
- return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainingsvolumen"><defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5FB4FF"/><stop offset="1" stop-color="#1F4FD1" stop-opacity=".35"/></linearGradient></defs>
+ return`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainingsvolumen"><defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5FB4FF"/><stop offset="1" stop-color="#1F4FD1" stop-opacity=".35"/></linearGradient><filter id="bgl" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#2F8CFF" flood-opacity=".8"/></filter></defs>
   ${ticks.map(v=>`<line x1="${L}" x2="${W-4}" y1="${Y(v*1000)}" y2="${Y(v*1000)}" stroke="rgba(140,170,230,.12)"/><text x="${L-6}" y="${Y(v*1000)+4}" text-anchor="end" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${fmt(v,1)}t</text>`).join("")}
-  ${months.map((m,i)=>`<rect x="${L+i*bw+bw*.28}" y="${Y(m.v)}" width="${bw*.44}" height="${Math.max(0,H-B-Y(m.v))}" rx="3" fill="url(#bg1)" ${i===n-1?'style="filter:drop-shadow(0 0 6px #2F8CFF)"':""}/><text x="${L+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${m.label}</text>`).join("")}</svg>`;
+  ${months.map((m,i)=>`<rect x="${L+i*bw+bw*.28}" y="${Y(m.v)}" width="${bw*.44}" height="${Math.max(0,H-B-Y(m.v))}" rx="3" fill="url(#bg1)" ${i===n-1?`filter="url(#bgl)"`:""}/><text x="${L+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${m.label}</text>`).join("")}</svg>`;
 }
 
 /* ---------- 2 Trainingsplan ---------- */
@@ -1554,7 +1557,7 @@ function focusSheet(ei,si){
  openSheet(`<div class="focus"><div class="row"><button class="iconbtn" data-act="close" aria-label="Schließen">${svgI.back}</button><div class="grow" style="text-align:center"><h2>Satz ${pos.si+1} von ${e.sets.length}</h2><div class="small muted">${esc(ex?ex.n:e.ex)}</div></div><button class="iconbtn" data-act="exInfo" data-id="${e.ex}" aria-label="Übungsdetails">i</button></div>
   ${e.rec?`<div class="hint ${e.rec.kind==="up"?"up":""}" style="text-align:center">${esc(e.rec.text)}</div>`:""}
   <div class="fkg"><button class="rbtn" data-act="fStep" data-k="kg" data-n="-1" aria-label="Weniger Gewicht">−</button>
-   <div class="fring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/><circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(pos.si+1)/e.sets.length)}" style="filter:drop-shadow(0 0 6px #2F8CFF)"/></svg><div class="c"><input id="fKg" type="number" inputmode="decimal" step="0.5" value="${s.kg??""}" placeholder="–" aria-label="Gewicht"><span class="muted">kg</span></div></div>
+   <div class="fring">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/><circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(pos.si+1)/e.sets.length)}" ${g.f}/></svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><input id="fKg" type="number" inputmode="decimal" step="0.5" value="${s.kg??""}" placeholder="–" aria-label="Gewicht"><span class="muted">kg</span></div></div>
    <button class="rbtn" data-act="fStep" data-k="kg" data-n="1" aria-label="Mehr Gewicht">+</button></div>
   <div class="lbl" style="text-align:center">Wiederholungen${tg.repMin?` · Ziel ${tg.repMin===tg.repMax?tg.repMin:tg.repMin+"–"+tg.repMax}`:""}</div>
   <div class="fkg"><button class="rbtn" data-act="fStep" data-k="reps" data-n="-1" aria-label="Weniger Wiederholungen">−</button><input id="fReps" class="freps" type="number" inputmode="numeric" value="${s.reps??""}" aria-label="Wiederholungen"><button class="rbtn" data-act="fStep" data-k="reps" data-n="1" aria-label="Mehr Wiederholungen">+</button></div>
@@ -1686,7 +1689,7 @@ function vProfile(){
  const ic=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
  return`<div class="section">${pageHd("Profil",`<button class="iconbtn" data-act="profile" aria-label="Einstellungen">${svgI.gear}</button>`)}
  <div class="card stack"><div class="row"><div class="avatar">${esc(name.slice(0,1).toUpperCase())}</div><div class="grow"><h2>${esc(name)}</h2><div class="small muted">${goal?`Ziel: ${fmt(goal,1)} kg`:`${PL.GOALS[(M.plan&&M.plan.goal)||"muskel"]}`}</div></div>
-  ${prog!=null?`<div class="pring"><svg viewBox="0 0 70 70"><circle cx="35" cy="35" r="30" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/><circle cx="35" cy="35" r="30" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-prog)}" transform="rotate(-90 35 35)" style="filter:drop-shadow(0 0 5px #2F8CFF)"/></svg><span>${Math.round(prog*100)} %</span></div>`:""}</div>
+  ${prog!=null?`<div class="pring">${(g=>`<svg viewBox="0 0 70 70">${g.defs}<circle cx="35" cy="35" r="30" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/><circle cx="35" cy="35" r="30" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-prog)}" transform="rotate(-90 35 35)" ${g.f}/></svg>`)(ringGlow("#2F8CFF",70))}<span>${Math.round(prog*100)} %</span></div>`:""}</div>
   <div class="grid3"><div><div class="v">${fire} ${streakDays()}</div><div class="l">Tage Serie</div></div><div><div class="v">${ws.length}</div><div class="l">Workouts</div></div><div><div class="v">${prsSince(shiftDate(today(),-30))}</div><div class="l">neue PRs</div></div></div></div>
  <div class="card list menu-list">
   ${item(ic('<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M8 11h8M8 15h5"/>'),"Trainingspläne",'href="#plan"')}
