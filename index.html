@@ -431,9 +431,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=21"></script>
-<script src="ai.js?v=21"></script>
-<script src="figure.js?v=21"></script>
+<script src="planner.js?v=22"></script>
+<script src="ai.js?v=22"></script>
+<script src="figure.js?v=22"></script>
 <script src="geraete.js?v=2"></script>
 <script>
 "use strict";
@@ -742,8 +742,9 @@ function vGym(){
  ${tab==="types"?gymTypes(own,via,set):gymBrand(tab,chosen)}
  <p class="small muted">Übungen mit Körpergewicht sind immer dabei. Ein Kabelzug (Station, doppelt oder verstellbar) zählt auch als hoher und tiefer Kabelzug. „M“ = durch ein gewähltes Modell abgedeckt.</p></div>`;
 }
+const presetChips=()=>STUDIOS.length?`<div class="card stack" style="gap:8px"><div class="lbl">Vorlage für dein Studio</div><div class="chips">${STUDIOS.map(st=>`<button class="chip" data-act="studioPreset" data-id="${st.id}">${esc(st.name)}</button>`).join("")}</div></div>`:"";
 function gymTypes(own,via,set){
- return`<div class="row"><span class="grow small muted">Tippe an, was dein Studio hat. ⓘ zeigt die möglichen Übungen.</span><button class="btn sm ghost" data-act="eqAll">Alle</button><button class="btn sm ghost" data-act="eqNone">Keine</button></div>
+ return`${presetChips()}<div class="row"><span class="grow small muted">Tippe an, was dein Studio hat. ⓘ zeigt die möglichen Übungen.</span><button class="btn sm ghost" data-act="eqAll">Alle</button><button class="btn sm ghost" data-act="eqNone">Keine</button></div>
  ${Object.entries(EQG).map(([g,t])=>{const l=EQ.filter(e=>e.g===g);return`<div class="eqgroup" data-g="${g}"><div class="row" style="padding-top:6px"><h3 class="grow">${t}</h3><span class="small muted">${l.filter(e=>set.has(e.id)).length} / ${l.length}</span></div>
  <div class="eqgrid">${l.map(e=>{const on=own.has(e.id),vg=!on&&via.has(e.id);return`<button class="eq ${on?"on":""} ${vg?"via":""}" data-act="eq" data-id="${e.id}" data-s="${esc((e.n+" "+e.id).toLowerCase())}" aria-pressed="${on}"><span class="ck">${on?"✓":vg?"M":""}</span><span class="eqi" data-act="eqInfo" data-id="${e.id}" role="button" aria-label="Übungen mit ${esc(e.n)}">ⓘ</span>${eqSvg(e.id)}<span class="nm">${e.n}</span>${vg?`<span class="small muted">über Modell</span>`:""}</button>`}).join("")}</div></div>`}).join("")}`;
 }
@@ -751,7 +752,7 @@ function gymBrand(b,chosen){
  const br=BRANDS.find(x=>x.id===b)||{};const all=MODELS.filter(m=>m.brand===b);const series=[...new Set(all.map(m=>m.series))];
  const fs=(UI.gymSeries||{})[b]||"";const list=all.filter(m=>!fs||m.series===fs);
  const before=new Set(myEquipment());
- return`<div class="card stack" style="gap:6px"><div class="small">${esc(br.note||"")}</div><div class="small muted">Quelle: ${esc(br.src||"")}</div></div>
+ return`<div class="card stack" style="gap:6px"><div class="small">${esc(br.note||"")}</div><div class="small muted">Quelle: ${esc(br.src||"")}</div></div>${b==="fitx"?presetChips():""}
  <div class="chips"><button class="chip ${fs?"":"on"}" data-act="gymSeries" data-b="${b}" data-v="">Alle (${all.length})</button>${series.map(sr=>`<button class="chip ${fs===sr?"on":""}" data-act="gymSeries" data-b="${b}" data-v="${esc(sr)}">${esc(sr)} (${all.filter(m=>m.series===sr).length})</button>`).join("")}</div>
  <div class="row wrapr"><span class="grow small muted"><b id="mcount">${list.filter(m=>chosen.has(m.id)).length}</b> von ${list.length} gewählt</span><button class="btn sm ghost" data-act="modelsSel" data-b="${b}" data-v="1">Alle sichtbaren wählen</button><button class="btn sm ghost" data-act="modelsSel" data-b="${b}" data-v="0">Abwählen</button></div>
  ${series.filter(sr=>!fs||sr===fs).map(sr=>`<div class="g80s" data-sr="${esc(sr)}"><div class="lbl" style="padding-top:8px">${esc(sr)}</div><div class="card list" style="padding:2px 12px">${all.filter(m=>m.series===sr).map(m=>`<button class="li g80 ${chosen.has(m.id)?"on":""}" data-act="model" data-id="${esc(m.id)}" data-s="${esc(((m.nr||"")+" "+m.name+" "+sr+" "+m.eq.map(e=>EQMAP[e]?EQMAP[e].n:"").join(" ")).toLowerCase())}"><span class="g80ck">${chosen.has(m.id)?"✓":""}</span><div class="n"><div>${m.nr?`<span class="num muted small">${esc(m.nr)}</span> `:""}${esc(m.name)}</div><div class="small muted">${m.eq.length?"→ "+m.eq.map(e=>EQMAP[e]?EQMAP[e].n:e).join(", ")+" · "+exForEqSet(m.eq).length+" Übungen":"nicht zugeordnet (Bewegung aus Quellen nicht eindeutig)"}</div></div></button>`).join("")}</div></div>`).join("")}`;
@@ -844,7 +845,7 @@ function vTrain(){
  return`<div class="section">
  <div class="row"><div class="grow"><h2>${esc(A.dayName)}</h2><div class="small muted"><span id="elapsed">${mins}</span> min · ${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} Sätze erledigt${A.deload?" · Deload":""}</div></div><button class="btn ghost" data-act="focus">Fokus</button><button class="btn primary" data-act="finish">Fertig</button></div>
  ${A.exercises.map((e,ei)=>{const ex=EXMAP[e.ex];const L=lastSets(e.ex,A.id);const tg=e.target;const rc=e.rec;return`<div class="card wex" data-ei="${ei}">
-  <div class="row">${exMini(ex,1)}<div class="grow"><h3><button data-act="exInfo" data-id="${e.ex}">${esc(ex?ex.n:e.ex)} ⓘ</button></h3><div class="small muted">${tg?`Ziel ${schemeTxt(tg)} · RIR ${tg.rir} · Pause ${restTxt(tg.rest)}`:"Freie Übung"}</div></div><button class="iconbtn" data-act="exMenu" data-ei="${ei}" aria-label="Optionen">⋯</button></div>
+  <div class="row">${exMini(ex,1)}<div class="grow"><h3><button data-act="exInfo" data-id="${e.ex}">${esc(ex?ex.n:e.ex)} ⓘ</button></h3><div class="small muted">${tg?`Ziel ${schemeTxt(tg)} · RIR ${tg.rir} · Pause ${restTxt(tg.rest)}`:"Freie Übung"}</div>${deviceLine(e.ex)}</div><button class="iconbtn" data-act="exMenu" data-ei="${ei}" aria-label="Optionen">⋯</button></div>
   ${L?`<div class="small muted">Letztes Mal (${dayLabel(L.date)}): <span class="num" style="color:var(--ink)">${setsTxt(L.sets)}</span></div>`:""}
   ${rc?`<div class="hint ${rc.kind==="up"||rc.kind==="reps"?"up":""}">${esc(rc.text)}</div>`:""}
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
@@ -922,7 +923,7 @@ function barChart(days,target){
 /* ---------- sheet ---------- */
 let SH=null;
 function openSheet(html,ctx){SH=ctx||{};$("#sheet").innerHTML=`<div class="grab"></div>`+html;$("#sheetwrap").hidden=false;document.body.style.overflow="hidden"}
-function closeSheet(){stopLiveScan();if(window.Figure)Figure.stop();stop3d();$("#sheetwrap").hidden=true;$("#sheet").innerHTML="";SH=null;document.body.style.overflow=""}
+function closeSheet(){stopLiveScan();if(window.Figure)Figure.stop();stop3d();clearVideo();$("#sheetwrap").hidden=true;$("#sheet").innerHTML="";SH=null;document.body.style.overflow=""}
 $("#sheetwrap").addEventListener("click",e=>{if(e.target.id==="sheetwrap")closeSheet()});
 const sheetHd=t=>`<div class="sheethd"><h2 class="grow">${t}</h2><button class="iconbtn" data-act="close" aria-label="Schließen">✕</button></div>`;
 
@@ -1144,7 +1145,7 @@ const WD=["Mo","Di","Mi","Do","Fr","Sa","So"];
 const HOME_EQ=["db","bench","incline","pullup","dip","kb","ez","rack","cable"];
 const WSTEPS=["Ziel","Erfahrung","Tage","Zeit","Ort","Fokus","Vorschau"];
 function wizDefaults(){const o=(M.plan&&M.plan.v===2&&M.plan.opts)||{};const d=Object.assign({goal:"muskel",level:"int",weekdays:[0,2,4],minutes:60,loc:"gym",prio:[],injuries:[],skip:[],split:null},clone(o));if(!d.skip)d.skip=[];if(!d.weekdays||!d.weekdays.length)d.weekdays=[0,2,4];return d}
-function wizOpts(w){return{skip:w.skip||[],goal:w.goal,level:w.level,days:w.weekdays.length,minutes:w.minutes,equipment:w.loc==="home"?(M.homeEquipment||[]):myEquipment(),prio:w.prio,injuries:w.injuries,excluded:(M.prefs&&M.prefs.excluded)||[],fav:(M.prefs&&M.prefs.fav)||[],split:w.split,loc:w.loc,weekdays:w.weekdays.slice().sort((a,b)=>a-b)}}
+function wizOpts(w){return{prefer:w.loc==="home"?[]:[...viaModels()],skip:w.skip||[],goal:w.goal,level:w.level,days:w.weekdays.length,minutes:w.minutes,equipment:w.loc==="home"?(M.homeEquipment||[]):myEquipment(),prio:w.prio,injuries:w.injuries,excluded:(M.prefs&&M.prefs.excluded)||[],fav:(M.prefs&&M.prefs.fav)||[],split:w.split,loc:w.loc,weekdays:w.weekdays.slice().sort((a,b)=>a-b)}}
 function genSheet(){openSheet("",{w:wizDefaults(),step:0});renderWiz()}
 function renderWiz(){
  const w=SH.w,s=SH.step;
@@ -1181,6 +1182,16 @@ function savePlanFromWiz(){
  p.eqAvail=availCount();
  M.plan=p;persist("main");closeSheet();if(location.hash!=="#plan")location.hash="#plan";else render();toast("Plan gespeichert");
 }
+/* Welches deiner Geräte wird für die Übung genutzt? Zuerst ein gewähltes Modell, sonst der Gerätetyp */
+function deviceFor(exId){
+ const ex=EXMAP[exId];if(!ex||!ex.need)return null;const toks=ex.need.split(/[+|]/);const set=new Set(planEquip());
+ const usable=toks.filter(t=>PL.hasEq(t,set));if(!usable.length)return null;
+ const models=(M.models||[]).map(id=>MODMAP[id]).filter(m=>m&&m.eq.some(e=>usable.includes(e)||usable.some(t=>(PL.IMPLIED[t]||[]).includes(e))));
+ const brandN=b=>(BRANDS.find(x=>x.id===b)||{}).name||b;
+ if(models.length){const m=models[0];return{model:m,label:`${m.nr?m.nr+" ":""}${m.name}`,brand:brandN(m.brand),more:models.length-1,eq:usable[0]}}
+ const e=EQMAP[usable[0]];return e&&e.g!=="free"?{label:e.n,eq:usable[0]}:null;
+}
+function deviceLine(exId){const d=deviceFor(exId);if(!d)return"";return`<div class="small" style="color:var(--accent2)">an: ${esc(d.label)}${d.brand?` (${esc(d.brand)})`:""}${d.more?` · +${d.more} weitere`:""}</div>`}
 /* ---------- Plan folgt der Geräteauswahl ---------- */
 function it0m(di,ii){const it=M.plan&&M.plan.days[di]&&M.plan.days[di].items[ii];if(!it)return"";if(it.missing)return`<div class="small" style="color:var(--warn)">Gerät fehlt – wird übersprungen</div>`;if(it.orig&&EXMAP[it.orig])return`<div class="small muted">statt ${esc(EXMAP[it.orig].n)} (Gerät nicht gewählt)</div>`;return""}
 function availCount(){const s=new Set(planEquip());return EX.filter(e=>hasNeed(e.need,s)).length}
@@ -1456,7 +1467,7 @@ function planMain(){
  ${st&&!st.deload?`<button class="btn ghost block" data-act="deloadNow">Deload-Woche starten</button>`:""}`;
 }
 function libView(){
- const q=(UI.libQ||"").toLowerCase();const s=new Set(myEquipment());const groups={};const fm=UI.libM||"",fa=!!UI.libAvail;
+ const q=(UI.libQ||"").toLowerCase();const s=new Set(myEquipment());const groups={};const fm=UI.libM||"";if(UI.libAvail==null)UI.libAvail=s.size>0;const fa=!!UI.libAvail;
  const musOpts=[...new Set(EX.map(e=>e.m))];
  EX.filter(e=>(!q||e.n.toLowerCase().includes(q)||PL.MUSN[e.m].toLowerCase().includes(q)||(e.need||"").split(/[+|]/).some(t=>EQMAP[t]&&EQMAP[t].n.toLowerCase().includes(q)))&&(!fm||e.m===fm||Object.keys(e.s).includes(fm))&&(!fa||hasNeed(e.need,s))).forEach(e=>(groups[PL.MUSN[e.m]]=groups[PL.MUSN[e.m]]||[]).push(e));
  return`<input type="search" id="libQ" placeholder="Übung, Muskel oder Gerät suchen" value="${esc(UI.libQ||"")}" autocomplete="off">
@@ -1485,7 +1496,7 @@ function vDay(){
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
  ${UI.sortDay===di?sortList(di,its):`<div class="listhd"><div class="lbl grow">Übungen</div>${its.length>1?`<button class="btn sm ghost pill" data-act="sortOn" data-d="${di}">↕ Reihenfolge ändern</button>`:""}</div>
- <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b>${it0m(di,ii)}<div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
+ <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b>${it0m(di,ii)}${(M.plan.days[di].items[ii]||{}).missing?"":deviceLine(it.ex)}<div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
  <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
  <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div>`}</div>`;
@@ -1572,6 +1583,63 @@ Object.assign(FIG_NOTE,{
  rower_c:"Die Grafik zeigt das Rudern. Am Rudergerät startet jeder Zug mit dem Beinstoß, dann folgen Rumpf und Arme.",
  decline_bb:"Die Grafik zeigt flaches Bankdrücken. Auf der Negativbank liegt der Kopf tiefer als die Hüfte."
 });
+/* Einstellung am Gerät je Gerätetyp (allgemeingültige Herstellerpraxis; Modelle können abweichen – Aufkleber am Gerät beachten) */
+const SETUP={
+ legpress:["Rückenlehne so, dass Hüfte und Knie unten etwa 90° oder tiefer erreichen, ohne dass das Becken abrollt","Füße schulterbreit mittig auf der Platte; höher = mehr Po/Beinbeuger, tiefer = mehr Quadrizeps","Sicherungshebel erst lösen, wenn die Beine die Platte halten"],
+ legpress_s:["Sitz/Rücken so einstellen, dass die Knie in der Startposition etwa 90° gebeugt sind","Füße schulterbreit mittig auf die Platte","Griffe seitlich fassen, Becken am Polster"],
+ legpress_lying:["Schulterpolster so, dass die Knie unten etwa 90° gebeugt sind","Füße schulterbreit mittig","Kopf und Rücken bleiben auf dem Polster"],
+ legpress_dual:["Wie Beinpresse einstellen; Fußplatten arbeiten getrennt","Beide Seiten oder einbeinig möglich – gleiche Wiederholungen je Seite"],
+ legpressv:["Rücken flach auf dem Polster, Becken nah an die Platte","Füße schulterbreit, Sicherung erst lösen, wenn die Platte gehalten wird"],
+ hack:["Schulterpolster auf Schulterhöhe, Rücken an der Lehne","Füße schulterbreit mittig bis leicht vorn auf der Plattform","Sicherungsbügel nach dem Hochdrücken lösen"],
+ vsquat:["Schultern unter die Polster, Füße mittig","Startposition mit leicht gebeugten Knien, Sicherung lösen"],
+ pendulum:["Schultern unter die Polster, Rücken an der Lehne","Füße mittig auf der Plattform, Bewegungsweg über den Anschlag einstellen"],
+ levsquat:["Schulterpolster auf Schulterhöhe, Füße schulterbreit","Startstellung über den Anschlag wählen"],
+ beltsquat:["Gurt eng um die Hüfte, Kette/Seil mittig","Füße schulterbreit auf der Plattform, Hände leicht an den Griffen"],
+ sissym:["Fersen auf die Platte, Schienbeinpolster knapp unter dem Knie","Hüfte bleibt gestreckt"],
+ legext:["Kniegelenk auf Höhe der Drehachse (Markierung am Gerät)","Fußpolster vorn auf dem Schienbein über dem Sprunggelenk","Rückenlehne so, dass der Po hinten anliegt"],
+ legcurl:["Kniegelenk auf Höhe der Drehachse, Knie knapp über der Polsterkante","Fersenpolster über der Ferse, nicht an der Wade"],
+ legcurl_s:["Kniegelenk auf Höhe der Drehachse","Oberschenkelpolster fest auf die Oberschenkel","Wadenpolster knapp über der Ferse"],
+ legcurl_st:["Kniegelenk auf Höhe der Drehachse","Oberschenkel am Polster, Wadenpolster über der Ferse"],
+ invlegcurl:["Knie auf dem Polster, Fersen fest unter den Rollen","Bewegungsweg zu Beginn klein halten"],
+ ghd:["Fußplatte so, dass die Knie knapp hinter dem Polster liegen","Für Rückenstrecken Hüfte auf das Polster legen"],
+ revhyper:["Hüftkante an der Polsterkante, Beine frei","Gewicht leicht beginnen, Pendel nicht schwingen lassen"],
+ hipthrust:["Schulterblätter an die Lehne bzw. Polster quer über die Hüfte","Füße so, dass die Schienbeine oben senkrecht stehen"],
+ glutem:["Knie bzw. Fuß im Polster, Hüfte an der Drehachse","Oberkörper stabil abstützen"],
+ abduct:["Knie am Polster, Startwinkel so, dass leichte Spannung besteht","Rücken an der Lehne"],abductm:["Polster außen am Knie, Startwinkel einstellen","Rücken an der Lehne"],adductm:["Polster innen am Knie, Startöffnung so, dass eine Dehnung, aber kein Ziehen entsteht"],
+ abductst:["Polster außen über dem Knie, Hüfte auf Höhe der Drehachse","Am Griff festhalten, Oberkörper aufrecht"],
+ calf:["Schulterpolster so, dass die Knie fast gestreckt sind","Fußballen auf die Kante, Fersen frei"],calfseated:["Knie unter dem Polster, Fußballen auf der Kante","Sicherung erst lösen, wenn die Fersen angehoben sind"],
+ calfpress:["Sitz so, dass die Knie fast gestreckt sind","Fußballen auf den unteren Plattenrand"],donkeycalf:["Hüfte unter das Polster, Oberkörper vorgebeugt","Fußballen auf der Kante"],
+ tibm:["Fußrücken unter das Polster, Ferse fest","Kniewinkel etwa 90°"],
+ deadliftm:["Griffe auf Handhöhe bei neutralem Rücken","Füße hüftbreit mittig unter den Griffen"],
+ backext:["Polsterkante knapp unter dem Beckenknochen","Fußrolle so, dass die Beine fixiert sind"],backextm:["Hüfte auf Höhe der Drehachse, Rückenpolster auf dem oberen Rücken","Füße fest, Startwinkel klein beginnen"],
+ chestpress:["Sitzhöhe so, dass die Griffe auf mittlerer Brusthöhe sind","Startstellung so, dass die Ellbogen knapp hinter dem Körper sind (Dehnung, kein Schmerz)"],
+ chestlying:["Kopf, Schultern, Po auf dem Polster, Füße fest","Griffe auf Höhe der unteren Brust"],inclinechest:["Sitz so, dass die Griffe auf oberer Brusthöhe sind","Rücken fest an der Lehne"],
+ declinechest:["Sitz so, dass die Griffe auf unterer Brusthöhe sind"],innerchest:["Sitz so, dass die Griffe auf Brusthöhe sind","Griffe eng fassen"],
+ pecdeck:["Sitzhöhe so, dass die Griffe/Polster auf Schulterhöhe sind","Startstellung so, dass eine Dehnung in der Brust entsteht"],pecbent:["Sitzhöhe so, dass die Ellbogen auf Schulterhöhe an den Polstern liegen"],
+ revfly:["Brust an das Polster, Griffe auf Schulterhöhe","Arme fast gestreckt"],
+ shoulderpress:["Sitzhöhe so, dass die Griffe auf Schulter- bis Kinnhöhe beginnen","Rücken an der Lehne"],neckpress:["Sitz so, dass die Griffe auf Ohrhöhe beginnen","Nur mit beschwerdefreier Schulter"],viking:["Füße schulterbreit vor den Griffen, Griffe auf Schulterhöhe"],
+ lateralm:["Sitzhöhe so, dass die Schulter auf Höhe der Drehachse ist","Ellbogen bzw. Arme an die Polster"],lateralm2:["Schulter auf Höhe der Drehachse, Arme gestreckt an Griffen/Polstern"],
+ dipmach:["Sitz so, dass die Griffe auf Brusthöhe beginnen","Rücken an der Lehne, Ellbogen nah am Körper"],trimach:["Ellbogen auf Höhe der Drehachse, Oberarme auf dem Polster"],tricepsoh:["Ellbogen auf Höhe der Drehachse, Oberarme neben dem Kopf"],
+ preacher:["Sitzhöhe so, dass die Achsel an der Polsterkante liegt","Ellbogen auf Höhe der Drehachse"],bicepsoh:["Oberarme auf dem Polster, Ellbogen auf Höhe der Drehachse"],forearmm:["Unterarme auf dem Polster, Handgelenk über der Kante"],
+ latpull:["Knierolle so, dass die Oberschenkel fest sitzen","Griffbreite etwas weiter als schulterbreit; eng (V-Griff) für mehr Bewegungsumfang"],latm:["Knierolle fest auf die Oberschenkel","Griffe so wählen, dass die Arme oben gestreckt sind"],
+ highrow:["Brust an das Polster bzw. Knie unter die Rolle","Griffe so, dass die Arme gestreckt sind"],lowrow:["Brustpolster so, dass die Arme vorn gestreckt sind"],rowmachine:["Brustpolster so, dass die Griffe mit gestreckten Armen erreichbar sind","Sitzhöhe: Griffe etwa auf Brusthöhe"],
+ tbarm:["Brust an das Polster bzw. Füße fest auf die Plattform","Griff wählen: eng = mehr Mitte, weit = obere Rückenmuskeln"],bentrowm:["Füße fest auf der Plattform, Rücken gerade","Griffe mit gestreckten Armen fassen"],
+ pulloverm:["Schulter auf Höhe der Drehachse, Ellbogen an die Polster"],shrugm:["Griffe neben dem Körper, Arme gestreckt"],
+ cablerow:["Füße fest auf die Fußstützen, Knie leicht gebeugt","Griff wählen: V-Griff eng oder Stange weit"],
+ cable:["Rolle auf die Höhe der Übung stellen (hoch für Drücken nach unten, tief für Curls und Seitheben)","Passenden Griff wählen: Seil, Stange oder Einzelgriff"],cable2:["Rollen beidseitig auf gleiche Höhe","Mittig zwischen den Türmen stehen"],cableadj:["Rollenhöhe passend zur Übung einstellen","Seil, Stange oder Einzelgriff einhängen"],
+ cablehi:["Rolle oben, Griff einhängen (Seil oder Stange)"],cablelo:["Rolle unten, Einzelgriff oder Stange einhängen"],
+ smith:["Ablagehaken und Sicherheitsanschläge auf Höhe einstellen","Stange durch Drehen der Handgelenke aus- und einhaken"],
+ rack:["J-Haken etwa auf Brust- bzw. Schulterhöhe (Kniebeuge) einstellen","Sicherheitsablagen knapp unter den tiefsten Punkt der Übung"],
+ assist:["Gegengewicht wählen: mehr Gewicht = mehr Unterstützung","Knie bzw. Füße auf das Polster, Griffe fassen"],
+ absmach:["Sitz so, dass die Polster auf der Brust bzw. den Schultern liegen","Füße unter den Rollen"],abslying:["Rücken auf dem Polster, Griffe fassen"],torso:["Sitz/Knie fixieren, Startwinkel einstellen","Beide Seiten gleich trainieren"],
+ landmine:["Stange sicher in der Hülse, Scheibe am freien Ende"],declinebench:["Beine fixieren, Neigung einstellen","Stangenablage auf Armlänge"],absbench:["Beine unter den Rollen fixieren, Neigung wählen"],
+ vkr:["Unterarme auf die Polster, Rücken an die Lehne","Hände an die Griffe"],dip:["Barren schulterbreit, Hände neutral"],pullup:["Griffbreite etwas weiter als schulterbreit"],
+ bench:["Bank flach, Füße fest am Boden"],incline:["Rückenlehne auf 30–45°","Sitz leicht anwinkeln, damit du nicht rutschst"],
+ treadmill:["Not-Aus-Clip an der Kleidung befestigen","Mit langsamem Tempo starten"],crosstrainer:["Widerstand niedrig beginnen","Griffe locker halten"],rower:["Füße mit den Gurten über dem Fußballen fixieren","Widerstandsklappe mittel (z. B. 3–5)"],
+ stair:["Mit niedriger Stufe beginnen"],bike:["Sattelhöhe: Knie unten leicht gebeugt; Lenker so, dass der Rücken gerade bleibt"],
+ rings:["Ringe auf Brusthöhe (Rudern) bzw. Hüfthöhe (Dips)"],trx:["Gurte gleich lang, Körperwinkel bestimmt die Schwierigkeit"],
+ plyobox:["Boxhöhe so wählen, dass du sicher landest"],medball:["Ballgewicht so, dass die Technik sauber bleibt"],battlerope:["Seil mittig verankert, Abstand so, dass das Seil locker durchhängt"]
+};
 const BREATH="Atmung: vor der Wiederholung einatmen und den Rumpf anspannen, in der anstrengenden Phase ausatmen. Bei sehr schweren Sätzen höchstens 1–2 Sekunden die Luft anhalten.";
 const CUES_ID={
  legpress:["Rücken und Becken fest am Polster, Füße schulterbreit mittig auf der Platte","Nur so tief, dass das Becken nicht vom Polster abrollt","Knie folgen den Fußspitzen, oben nicht ganz durchstrecken"],
@@ -1694,9 +1762,11 @@ function exInfoSheet(exId,tab){
  const d3=use3d(),view=SH.view3d||"angle";
  if(t==="ov")body=`<div class="card exanim${d3?" is3d":""}" id="exAnim"></div>
   <div class="animctl"><div class="seg" style="min-width:96px"><button class="${d3?"on":""}" data-act="figDim" data-v="3d">3D</button><button class="${d3?"":"on"}" data-act="figDim" data-v="2d">2D</button></div>${[["play","▶ Abspielen"],["slow","🐢 Zeitlupe"],["start","Start"],["end","Ende"]].map(([k,l])=>`<button class="chip ${(k==="slow"?slow&&mode==="play":k===mode&&!(k==="play"&&slow))?"on":""}" data-act="figMode" data-v="${k}">${l}</button>`).join("")}</div>
-  ${d3?`<div class="animctl">${[["side","Seite"],["angle","Schräg"],["front","Vorne"],["back","Hinten"]].map(([k,l])=>`<button class="chip ${view===k?"on":""}" data-act="view3d" data-v="${k}">${l}</button>`).join("")}</div><div class="small muted" style="text-align:center">Mit dem Finger auf der Figur ziehen, um sie zu drehen.</div>`:""}
+  ${d3?`<div class="animctl">${[["side","Seite"],["angle","Schräg"],["front","Vorne"],["back","Hinten"]].map(([k,l])=>`<button class="chip ${view===k?"on":""}" data-act="view3d" data-v="${k}">${l}</button>`).join("")}</div><div class="small muted" style="text-align:center">Mit dem Finger auf der Figur ziehen, um sie zu drehen.</div>
+  <button class="btn ghost block" data-act="makeVideo">🎬 Video erstellen (2 Wiederholungen)</button><div id="vidBox"></div>`:""}
   <div class="small muted" style="text-align:center"><span class="legend red"></span> Zielmuskel: ${PL.MUSN[ex.m]}${sec.size?` &nbsp; <span class="legend sec"></span> hilft mit: ${[...sec].map(m=>PL.MUSN[m]).join(", ")}`:""}</div>
   ${FIG_NOTE[ex.id]?`<div class="hint">${esc(FIG_NOTE[ex.id])}</div>`:""}
+  ${(()=>{const dv=deviceFor(ex.id),key=(dv&&dv.eq)||mainEq(ex),st=SETUP[key];if(!dv&&!st)return"";return`<div class="card howto"><div class="lbl acc">Einstellung am Gerät</div>${dv?`<div class="small"><b>${esc(dv.label)}</b>${dv.brand?` · ${esc(dv.brand)}`:""}${dv.more?` <span class="muted">(+${dv.more} weitere passende Modelle gewählt)</span>`:""}</div>`:`<div class="small muted">Gerät nicht in deiner Auswahl – Hinweise gelten allgemein.</div>`}${st?`<ul class="cues">${st.map(c=>`<li>${c}</li>`).join("")}</ul>`:""}${dv&&dv.model?`<div class="small muted">Modelle unterscheiden sich im Detail – Einstellmarken am Gerät beachten.</div>`:""}</div>`})()}
   <div class="card howto"><div class="lbl acc">So geht's</div><ol class="cues">${(CUES_ID[ex.id]||CUES[ex.pat]||[]).map(c=>`<li>${c}</li>`).join("")}</ol></div>
   ${MISTAKES[ex.pat]?`<div class="card howto"><div class="lbl" style="color:var(--warn)">Häufige Fehler</div><ul class="cues err">${MISTAKES[ex.pat].map(c=>`<li>${c}</li>`).join("")}</ul></div>`:""}
   <div class="small muted">${BREATH} Tempo: etwa 2 Sekunden absenken, kontrolliert hoch. Den Satz beenden, wenn noch so viele saubere Wiederholungen gehen würden, wie dein RIR-Ziel sagt.</div>`;
@@ -1710,6 +1780,24 @@ function exInfoSheet(exId,tab){
 /* 3D-Ansicht (figure3d.js + three.js) wird erst beim ersten Öffnen geladen; ohne WebGL bleibt die 2D-Grafik */
 let FIG3=null,F3P=null,F3TOK=0,NO3D=false;
 function use3d(){let v="3d";try{v=localStorage.getItem("et-dim")||"3d"}catch(e){}return v==="3d"&&!NO3D}
+let VIDURL=null;
+function clearVideo(){if(VIDURL){URL.revokeObjectURL(VIDURL);VIDURL=null}}
+async function makeVideo(){
+ const box=$("#vidBox"),ex=SH&&EXMAP[SH.exInfo];if(!box||!ex)return;
+ if(!FIG3){toast("Videos entstehen aus der 3D-Ansicht. Bitte kurz warten, bis sie geladen ist.");return}
+ clearVideo();const btn=document.querySelector('[data-act="makeVideo"]');if(btn)btn.disabled=true;
+ box.innerHTML=`<div class="status">Video wird aufgenommen … <b id="vidPct">0 %</b></div>`;
+ try{
+  const blob=await FIG3.ctl.record({reps:2,onProgress:p=>{const el=$("#vidPct");if(el)el.textContent=Math.round(p*100)+" %"}});
+  if(!SH||SH.exInfo!==ex.id||!box.isConnected)return;
+  const ext=blob.type.includes("mp4")?"mp4":"webm",name=`${ex.n.replace(/[^\wäöüÄÖÜß ()-]/g,"").replace(/\s+/g,"-")}.${ext}`;
+  VIDURL=URL.createObjectURL(blob);SH.vidBlob=blob;SH.vidName=name;
+  box.innerHTML=`<video src="${VIDURL}" controls playsinline loop muted autoplay style="width:100%;border-radius:12px;background:#000"></video>
+   <div class="row" style="margin-top:8px"><button class="btn primary grow" data-act="shareVideo">Teilen</button><a class="btn ghost grow" href="${VIDURL}" download="${esc(name)}">Speichern</a></div>
+   <div class="small muted">${(blob.size/1048576).toFixed(1).replace(".",",")} MB · ${ext.toUpperCase()} · bleibt nur auf deinem Gerät, bis du es teilst.</div>`;
+ }catch(e){box.innerHTML=`<div class="status err">${esc(e&&e.message||"Aufnahme fehlgeschlagen.")}</div>`}
+ finally{if(btn)btn.disabled=false}
+}
 function stop3d(){F3TOK++;if(FIG3){try{FIG3.ctl.dispose()}catch(e){}FIG3=null}}
 function drawFig(){
  const el=$("#exAnim"),ex=SH&&EXMAP[SH.exInfo];if(!el||!ex||!window.Figure)return;const prim=new Set([ex.m]),sec=new Set(Object.keys(ex.s));const mode=SH.figMode||"play";
@@ -1717,7 +1805,7 @@ function drawFig(){
   Figure.stop();
   if(FIG3&&FIG3.el===el&&FIG3.id===ex.id){FIG3.ctl.setMode(mode,!!SH.slow);return}
   stop3d();const tok=F3TOK;el.classList.add("is3d");el.innerHTML=`<div class="loading" style="padding-top:42%">3D wird geladen …</div>`;
-  (F3P||(F3P=import("./figure3d.js?v=2"))).then(m=>{
+  (F3P||(F3P=import("./figure3d.js?v=4"))).then(m=>{
    if(tok!==F3TOK||!SH||SH.exInfo!==ex.id||!el.isConnected)return;
    if(!m.supported())throw new Error("kein WebGL");
    const ctl=m.create(el,ex.id,prim,sec,{mode,slow:!!SH.slow,onInteract:()=>document.querySelectorAll('[data-act="view3d"]').forEach(c=>c.classList.remove("on"))});
@@ -1996,6 +2084,8 @@ document.addEventListener("click",e=>{
  case"moveTo":moveTo(+d.v);break;
  case"exInfo":if(SH&&SH.exInfo!==d.id){SH.slow=false;SH.figMode="play"}exInfoSheet(d.id);break;
  case"exInfoItem":{const bi=SH&&SH.di!=null?[SH.di,SH.ii]:null;SH={backItem:bi};exInfoSheet(d.id);break}
+ case"makeVideo":makeVideo();break;
+ case"shareVideo":{const f=SH&&SH.vidBlob?new File([SH.vidBlob],SH.vidName,{type:SH.vidBlob.type}):null;if(f&&navigator.canShare&&navigator.canShare({files:[f]}))navigator.share({files:[f],title:SH.vidName}).catch(()=>{});else toast("Teilen geht hier nicht – nutze „Speichern“.");break}
  case"figDim":{try{localStorage.setItem("et-dim",d.v)}catch(e){}if(d.v==="3d")NO3D=false;stop3d();exInfoSheet(SH.exInfo,"ov");break}
  case"view3d":SH.view3d=d.v;if(FIG3)FIG3.ctl.setView(d.v);document.querySelectorAll('[data-act="view3d"]').forEach(c=>c.classList.toggle("on",c===b));break;
  case"figMode":{if(d.v==="slow"){SH.slow=!(SH.slow&&SH.figMode==="play");SH.figMode="play"}else{SH.figMode=d.v;if(d.v==="play")SH.slow=false}document.querySelectorAll(".animctl .chip").forEach(c=>{const k=c.dataset.v;c.classList.toggle("on",k==="slow"?SH.slow&&SH.figMode==="play":k===SH.figMode&&!(k==="play"&&SH.slow))});drawFig();break}
@@ -2088,7 +2178,7 @@ $("#importIn").addEventListener("change",async e=>{const f=e.target.files[0];e.t
   try{Object.keys(localStorage).filter(k=>k.startsWith("et/")).forEach(k=>localStorage.removeItem(k))}catch(err){}
   M=Object.assign(M,j.M);DAYS=j.DAYS||{};WORKOUTS=j.WORKOUTS||{};
   await Store.write("main",clone(M));for(const id in DAYS)await Store.write("days/"+id,{...DAYS[id],date:id});for(const id in WORKOUTS)await Store.write("workouts/"+id,WORKOUTS[id]);
-  render();toast("Sicherung geladen")})});
+  syncPlanToEquipment();persist("main");render();toast("Sicherung geladen")})});
 
 /* ---------- boot ---------- */
 (async()=>{
@@ -2097,7 +2187,9 @@ $("#importIn").addEventListener("change",async e=>{const f=e.target.files[0];e.t
  try{await Store.loadAll()}catch(e){toast("Daten konnten nicht geladen werden.")}
  M.settings=M.settings||{rest:90};M.products=M.products||{};M.weights=M.weights||[];M.prefs=M.prefs||{excluded:[],fav:[]};M.homeEquipment=M.homeEquipment||[];M.models=M.models||[];if(M.gym80&&M.gym80.length){M.models=[...new Set([...M.models,...M.gym80.map(n=>"gym80:"+n)])];delete M.gym80;persist("main")}if(M.plan&&M.plan.v===2&&M.plan.eqAvail==null)M.plan.eqAvail=availCount();if(M.plan&&M.plan.v===2&&!M.plan.id)M.plan.id="p"+uid();
  if((M.eqv||1)<2){/* Geräte aufgeteilt: T-Bar und Dip-Maschine sind jetzt eigene Geräte */const es=new Set(M.equipment||[]);if(es.has("rowmachine"))es.add("tbarm");if(es.has("trimach"))es.add("dipmach");M.equipment=[...es];M.eqv=2;persist("main")}
- UI.ready=true;render();
+ UI.ready=true;
+ { const r=syncPlanToEquipment();if(r.swapped.length||r.back.length||r.missing.length){persist("main");setTimeout(()=>toast(`Plan an deine Geräte angepasst: ${r.swapped.length+r.back.length} getauscht${r.missing.length?`, ${r.missing.length} ohne Alternative`:""}`),600)} }
+ render();
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
  if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
  if(M.active)keepAwake();

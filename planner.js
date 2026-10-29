@@ -274,7 +274,7 @@ function generate(o) {
   o = Object.assign({goal:"muskel", level:"int", days:3, minutes:60, equipment:[], prio:[], injuries:[], excluded:[], fav:[], skip:[]}, o);
   const skip = new Set(o.skip || []);
   const li = LVL[o.level] ?? 1;
-  const eq = new Set(o.equipment), excl = new Set(o.excluded), fav = new Set(o.fav), prio = new Set(o.prio);
+  const eq = new Set(o.equipment), excl = new Set(o.excluded), fav = new Set(o.fav), prio = new Set(o.prio), prefer = new Set(o.prefer || []);
   const injured = new Set((o.injuries || []).flatMap(k => INJ[k] || []));
   const avail = EX.filter(e => hasNeed(e.need, eq) && !excl.has(e.id) && !injured.has(e.id) && !skip.has(e.m));
   const rec = recommendSplit(o);
@@ -292,6 +292,7 @@ function generate(o) {
     if (o.level === "beg") sc += BEGIN_PEN[e.id] || 0;
     if (o.goal === "kraft" && role === 0) sc += STRENGTH_BIAS[e.id] || 0;
     if (fav.has(e.id)) sc -= 4;
+    if (prefer.size && (e.need || "").split(/[+|]/).some(t => prefer.has(t))) sc -= 1.5;   // Gerät ist als konkretes Modell gewählt
     const used = usedWeek[e.id] || 0;
     if (o.goal === "kraft" && role === 0 && e.c) sc -= used * 2;      // Kraft: dieselbe Hauptübung festigen
     else sc += used * 2.5;                                             // sonst Abwechslung zwischen den Einheiten
