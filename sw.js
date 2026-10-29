@@ -1,6 +1,6 @@
 // Cans Fitness App – Offline-Cache. Bei Änderungen an der App die Versionsnummer erhöhen.
-const CACHE = "et-v20";
-const SHELL = ["./", "./index.html", "./planner.js?v=19", "./ai.js?v=19", "./figure.js?v=19", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./figure3d.js?v=1", "./three.module.min.js", "./three.core.min.js"];
+const CACHE = "et-v21";
+const SHELL = ["./", "./index.html", "./planner.js?v=20", "./ai.js?v=20", "./figure.js?v=20", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./geraete.js?v=1", "./figure3d.js?v=2", "./three.module.min.js", "./three.core.min.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

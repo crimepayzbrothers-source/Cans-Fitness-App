@@ -204,6 +204,17 @@ const T = {
     props: J => { const pv = [18, 8], a = ang(pv, J.W); return ground() + line(pv, add(J.W, a, 12), 3.5, "#2A3A5C") + circ(add(J.W, a, 6), 9) + circ(pv, 3, "#2A3A5C"); }},
   backextseat: {a: sit({torso: 58, ua: -30, fa: 120}), b: sit({torso: 100, ua: -40, fa: 110}),
     props: J => seat(64, 55, 36) + roller(add(add(J.H, J.p.torso, 34), J.p.torso + 90, 8)) + line([40, 6], [40, 150], 4) + line([116, 6], [116, 14], 3) + rect(110, 10, 22, 5)},
+  walk: {cyc: 1, a: {hip: [92, 85], torso: 86, neck: 2, thigh: -68, shin: -98, foot: 0, thigh2: -112, shin2: -100, foot2a: -12, ua: -112, fa: -78},
+    b: {hip: [92, 85], torso: 86, neck: 2, thigh: -112, shin: -100, foot: -12, thigh2: -68, shin2: -98, foot2a: 0, ua: -70, fa: -40},
+    props: (J, o) => ground() + (o.belt ? line([30, 9], [160, 9], 6, C.pad) + line([150, 9], [158, 120], 4) + handle([150, 118]) : o.stair ? rect(60, 6, 70, 8) + rect(80, 14, 50, 8) + line([150, 6], [150, 130], 4) : o.elliptic ? line([60, 9], [130, 9], 4) + line([140, 6], [136, 150], 4) + handle(J.W) : "")},
+  bike: {cyc: 1, a: {hip: [86, 74], torso: 66, neck: 14, thigh: -18, shin: -92, foot: -10, thigh2: 12, shin2: -60, foot2a: 0, ua: -8, fa: -18},
+    b: {hip: [86, 74], torso: 66, neck: 14, thigh: 12, shin: -60, foot: 0, thigh2: -18, shin2: -92, foot2a: -10, ua: -8, fa: -18},
+    props: J => rect(74, 68, 22, 6) + line([84, 68], [104, 30], 4) + line([104, 30], [128, 112], 4) + line([128, 112], [136, 116], 3) + circ([104, 30], 9) + line([60, 8], [150, 8], 5) + line([104, 30], [104, 8], 4) + handle([136, 116])},
+  ropes: {cyc: 1, a: stand({shin: -108, thigh: -48, torso: 72, ua: -10, fa: 8}), b: stand({shin: -108, thigh: -48, torso: 72, ua: -55, fa: -40}),
+    props: J => { const w = J.W, n = 6, pts = []; for (let i = 0; i <= n; i++) { const k = i / n; pts.push([lerp(w[0], 188, k), lerp(w[1], 12, k) + Math.sin(k * Math.PI * 3) * 6 * (1 - k)]); } let o = ground(); for (let i = 0; i < n; i++) o += line(pts[i], pts[i + 1], 2.5, "#2A3A5C"); return o + circ([188, 12], 3, "#2A3A5C"); }},
+  slam: {a: stand({ua: 96, fa: 94}), b: stand({shin: -106, thigh: -58, torso: 34, ua: -84, fa: -84}), props: J => ground() + front1(circ([J.W[0] + 2, J.W[1] - 2], 8))},
+  jump: {a: stand({shin: -115, thigh: -15, torso: 55, ua: -140, fa: -135}), b: stand({ankle: [124, 42], shin: -92, thigh: -88, torso: 88, ua: 70, fa: 80}),
+    props: J => ground() + rect(104, 6, 44, 34)},
   shrug: {a: stand({ua: -78, fa: -80, lift: 0}), b: stand({ua: -78, fa: -80, lift: 11}), props: (J, o) => ground() + (o.load === "machine" ? handle(J.W) + line(J.W, [150, J.W[1]], 2) + line([150, 6], [150, 120], 4) : load(o, J))},
   standcurl: {a: {hip: [92, 88], torso: 84, thigh: -82, shin: -92, foot: 0, thigh2: -90, shin2: -90, ua: -30, fa: 20}, b: {hip: [92, 88], torso: 84, thigh: -82, shin: -200, foot: -110, thigh2: -90, shin2: -90, ua: -30, fa: 20},
     props: J => ground() + roller(add(J.A, J.p.shin - 90, 6)) + rect(J.K[0] + 4, J.K[1] + 2, 7, 22) + line([140, 6], [140, 120], 4) + handle(J.W)},
@@ -273,6 +284,13 @@ const MAP = {
   chest_lying: ["bench", {load: "handle"}], decline_mp: ["chestpress", {}], pecdeck_bent: ["fly", {}], lm_press: ["lmpress", {}], lat_raise_m2: ["#lateral"],
   latm_pull: ["pulldown", {}], high_row: ["pulldown", {}], low_row: ["rowchest", {}], lm_row: ["bentrow", {load: "bb"}],
   shrug_m: ["shrug", {load: "machine"}], shrug_db: ["shrug", {load: "db"}], vkr_raise: ["legraise", {}], ab_lying: ["crunch", {}],
+  forearm_m: ["preacher", {load: "handle"}], wrist_curl: ["preacher", {load: "db"}], tib_m: ["calfseat", {}], neckpress_m: ["ohpseat", {load: "machine"}], viking: ["lmpress", {}],
+  inv_legcurl: ["legcurl", {}], ghr: ["legcurl", {}], ghd_ext: ["backext", {}], rev_hyper: ["kickback", {}], abduct_st: ["kickback", {}],
+  biceps_oh: ["curl", {load: "cable"}], triceps_oh_m: ["overhead", {load: "cable"}], inner_chest: ["chestpress", {}], donkey_calf: ["calf", {load: "machine"}],
+  lev_squat: ["squat", {}], legpress_v: ["legpress", {}], bentrow_m: ["bentrow", {load: "handle"}], decline_bb: ["bench", {load: "bb"}], decline_crunch: ["crunch", {}],
+  ring_row: ["invrow", {}], ring_dip: ["dips", {}], trx_row: ["invrow", {}], trx_pushup: ["pushup", {}], wallbar_raise: ["legraise", {}], ab_rollout: ["pushup", {}],
+  band_pullapart: ["facepull", {}], stepup: ["lunge", {load: "db"}], sandbag_squat: ["goblet", {}], mb_slam: ["slam", {}], wall_ball: ["goblet", {}],
+  box_jump: ["jump", {}], battle_rope: ["ropes", {}], treadmill: ["walk", {belt: 1}], crosstrainer: ["walk", {elliptic: 1}], stairclimber: ["walk", {stair: 1}], rower_c: ["row", {}], bike: ["bike", {}],
   cable_crunch: ["cablecrunch", {}], ab_m: ["abmach", {}], torso_m: ["abmach", {}], crunch: ["crunch", {}], deadbug: ["deadbug", {}], hlr: ["legraise", {}]
 };
 
@@ -309,6 +327,24 @@ function svg(exId, t, prim, sec, cls) {
 /* Hand als kleine Kugel, damit Griffe sichtbar „gehalten“ werden */
 function headless(J) { return `<circle cx="${X(J.W[0])}" cy="${Y(J.W[1])}" r="3.6" fill="${C.outline}"/><circle cx="${X(J.W[0])}" cy="${Y(J.W[1])}" r="2.7" fill="url(#gb${G})"/>`; }
 
+/* Tempo: Vorlagen, bei denen die Bewegung mit dem Absenken (exzentrisch) beginnt */
+const ECC_FIRST = new Set(["squat", "goblet", "splitsq", "lunge", "hack", "hinge", "slrdl", "bench", "incline", "dips", "pushup", "pike", "sissy"]);
+/* Liefert t (0 = Start, 1 = Ende) zu einer Phase 0..1 des Zyklus.
+   Konzentrisch ~1 s, exzentrisch ~2 s, kurze Halte- und Umkehrpunkte; zyklische Bewegungen (Gehen, Rad) gleichmäßig. */
+function tempo(exId, ph) {
+  const m = MAP[exId] || ["curl", {}], tpl = m[0][0] === "#" ? null : T[m[0]];
+  if (tpl && tpl.cyc) return 0.5 - 0.5 * Math.cos(ph * 2 * Math.PI);
+  const ecc = !!tpl && ECC_FIRST.has(m[0]);
+  // Abschnitte: Halten 8 %, Hinweg, Halten 10 %, Rückweg, Halten 10 %
+  const go = ecc ? 0.44 : 0.24, back = ecc ? 0.28 : 0.48;
+  const e = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  if (ph < 0.08) return 0;
+  if (ph < 0.08 + go) return e((ph - 0.08) / go);
+  if (ph < 0.18 + go) return 1;
+  if (ph < 0.18 + go + back) return 1 - e((ph - 0.18 - go) / back);
+  return 0;
+}
+function period(exId, slow) { const m = MAP[exId] || ["curl"], tpl = m[0][0] === "#" ? null : T[m[0]]; return (tpl && tpl.cyc ? 1700 : 4300) * (slow ? 2 : 1); }
 /* Animation eines Containers: hin und her mit Pausen an Start und Ende */
 let animTimer = null, animState = null;
 /* Bewegung: kurz halten, kontrolliert in die Endposition, halten, zurück. opt.slow = Zeitlupe */
@@ -318,7 +354,7 @@ function animate(el, exId, prim, sec, opt) {
   const reduce = root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduce) { el.innerHTML = svg(exId, 0, prim, sec) + svg(exId, 1, prim, sec); el.classList.add("pair"); return; }
   el.classList.remove("pair");
-  const period = opt && opt.slow ? 6000 : 3000, t0 = performance.now();
+  const per = period(exId, opt && opt.slow), t0 = performance.now();
   let last = -1;
   const st = animState = {};
   const frame = now => {
@@ -326,8 +362,7 @@ function animate(el, exId, prim, sec, opt) {
     if (!el.isConnected) return stop();
     if (now - last >= 33) {
       last = now;
-      const ph = ((now - t0) % period) / period;
-      const t = ph < .12 ? 0 : ph < .47 ? ease((ph - .12) / .35) : ph < .6 ? 1 : 1 - ease((ph - .6) / .4);
+      const t = tempo(exId, ((now - t0) % per) / per);
       el.innerHTML = svg(exId, t, prim, sec);
     }
     animTimer = root.requestAnimationFrame(frame);
@@ -346,6 +381,6 @@ function scene(exId, t) {
   try { tp.props(J, o); } finally { var prims = REC; REC = null; }
   return {kind: "side", J, f: tp.front || 1, o, prims, tpl: m[0]};
 }
-const API = {svg, animate, stop, MAP, T, solve, scene, L, C, MUSCLE};
+const API = {svg, animate, stop, MAP, T, solve, scene, L, C, MUSCLE, tempo, period, ECC_FIRST};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Figure = API;
 })(typeof window !== "undefined" ? window : this);

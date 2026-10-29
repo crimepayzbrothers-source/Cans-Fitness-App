@@ -6,15 +6,16 @@
 
 /* ---------- Muskeln ---------- */
 const MUSCLES = ["quads","hams","chest","back","front","glutes","side","rear","triceps","biceps","calves","abs"];
-const MUSN = {chest:"Brust",back:"Rücken",quads:"Quadrizeps",hams:"Beinbeuger",glutes:"Po",front:"Vordere Schulter",side:"Seitliche Schulter",rear:"Hintere Schulter",triceps:"Trizeps",biceps:"Bizeps",calves:"Waden",abs:"Bauch",adductors:"Adduktoren",traps:"Nacken (Trapez)"};
-const TIER = {quads:3,hams:3,chest:3,back:3,glutes:2,front:2,side:2,rear:1,triceps:1,biceps:1,calves:1,abs:0,adductors:0,traps:0};
+const MUSN = {chest:"Brust",back:"Rücken",quads:"Quadrizeps",hams:"Beinbeuger",glutes:"Po",front:"Vordere Schulter",side:"Seitliche Schulter",rear:"Hintere Schulter",triceps:"Trizeps",biceps:"Bizeps",calves:"Waden",abs:"Bauch",adductors:"Adduktoren",traps:"Nacken (Trapez)",forearms:"Unterarme",tibialis:"Schienbeinmuskel",lowback:"Unterer Rücken",cardio:"Ausdauer & Kondition"};
+const TIER = {quads:3,hams:3,chest:3,back:3,glutes:2,front:2,side:2,rear:1,triceps:1,biceps:1,calves:1,abs:0,adductors:0,traps:0,forearms:0,tibialis:0,lowback:0,cardio:0};
 
 /* Bewegungsmuster -> [Zielmuskel, Mitbelastung (zählt halb bzw. anteilig), Grundübung?] */
 const PAT = {
   squat:["quads",{glutes:.5},1], hinge:["hams",{glutes:.5},1], hpush:["chest",{triceps:.5,front:.5},1],
   vpush:["front",{triceps:.5,side:.5},1], hpull:["back",{biceps:.5,rear:.5},1], vpull:["back",{biceps:.5},1],
   quadiso:["quads",{},0], hamiso:["hams",{},0], glute:["glutes",{hams:.25},0], chestiso:["chest",{front:.25},0],
-  side:["side",{},0], rear:["rear",{},0], bi:["biceps",{},0], tri:["triceps",{},0], calf:["calves",{},0], core:["abs",{},0], adduct:["adductors",{},0], shrug:["traps",{},0]
+  side:["side",{},0], rear:["rear",{},0], bi:["biceps",{},0], tri:["triceps",{},0], calf:["calves",{},0], core:["abs",{},0], adduct:["adductors",{},0], shrug:["traps",{},0],
+  forearm:["forearms",{},0], tib:["tibialis",{},0], lowback:["lowback",{glutes:.25,hams:.25},0], cond:["cardio",{},0]
 };
 
 /* ---------- Übungen: need = UND über "+", ODER über "|"; rank = Grundpriorität (klein = bevorzugt) ----------
@@ -58,13 +59,29 @@ const RAW = [
  /* Geräte-Erweiterung (Oktober 2026) */
  ["legpress_s","Beinpresse sitzend (horizontal)","squat","legpress_s",2.5],["legpress_l","Liegende Beinpresse","squat","legpress_lying",2.5],["legpress_1","Einbeinige Beinpresse (dual)","squat","legpress_dual",3,{r:[8,12]}],
  ["belt_squat","Belt Squat","squat","beltsquat",2],["v_squat","V-Squat (Maschine)","squat","vsquat",2],["sissy_m","Sissy Squat (Vorrichtung)","quadiso","sissym",2,{r:[8,15]}],
- ["dl_machine","Kreuzheben an der Maschine","hinge","deadliftm",3,{r:[6,10]}],["backext_m","Rückenstrecker-Maschine (sitzend)","hinge","backextm",8,{c:0,s:{glutes:.25},r:[10,15]}],
+ ["dl_machine","Kreuzheben an der Maschine","hinge","deadliftm",3,{r:[6,10]}],["backext_m","Rückenstrecker-Maschine (sitzend)","lowback","backextm",1,{r:[10,15]}],
  ["legcurl_st","Beinbeuger stehend (einbeinig)","hamiso","legcurl_st",1.5],["calf_press_s","Wadenpresse sitzend (Maschine)","calf","calfpress",1.5],
  ["chest_lying","Liegende Brustpresse (Maschine)","hpush","chestlying",2],["decline_mp","Negativ-Brustpresse (Maschine)","hpush","declinechest",3],["pecdeck_bent","Butterfly mit gebeugten Armen","chestiso","pecbent",1.5],
  ["lm_press","Landmine Press","vpush","landmine",4,{s:{triceps:.5,chest:.25}}],["lat_raise_m2","Seitheben-Maschine (gestreckte Arme)","side","lateralm2",0.8],
  ["latm_pull","Latzug-Maschine (frei geführt)","vpull","latm",1.5],["high_row","High Row (Maschine)","vpull","highrow",2,{s:{biceps:.5,rear:.25}}],["low_row","Low Row (Maschine)","hpull","lowrow",1.5],["lm_row","Landmine-Rudern","hpull","landmine",3],
  ["shrug_m","Shrugs an der Maschine","shrug","shrugm",1,{r:[10,15]}],["shrug_db","Kurzhantel-Shrugs","shrug","db",2,{r:[10,15]}],
  ["vkr_raise","Beinheben im Stütz (Beinhebestation)","core","vkr",2,{r:[8,15]}],["ab_lying","Bauchpresse liegend (Maschine)","core","abslying",1.5],
+ /* Erweiterung gym80-/Studio-Geräte (Oktober 2026) */
+ ["forearm_m","Unterarmmaschine","forearm","forearmm",1,{r:[12,20]}],["wrist_curl","Unterarm-Curls (KH)","forearm","db",2,{r:[12,20]}],
+ ["tib_m","Tibialis-Maschine (sitzend)","tib","tibm",1,{r:[12,20]}],
+ ["neckpress_m","Nackendrücken (Maschine)","vpush","neckpress",5],["viking","Viking Press","vpush","viking",3,{s:{triceps:.5,side:.25}}],
+ ["inv_legcurl","Inverse Leg Curl (Maschine)","hamiso","invlegcurl",2.5,{r:[6,12]}],["ghr","Glute-Ham-Raise","hamiso","ghd",3,{r:[5,10],s:{glutes:.25}}],["ghd_ext","Rückenstrecken am Glute-Ham-Developer","lowback","ghd",2,{r:[10,15]}],
+ ["rev_hyper","Reverse Hyperextension","glute","revhyper",4,{r:[10,15],s:{hams:.25}}],["abduct_st","Abduktion stehend (Maschine)","glute","abductst",3.5,{s:{},r:[10,15]}],
+ ["biceps_oh","Bizepscurl über Kopf (Maschine)","bi","bicepsoh",2.5],["triceps_oh_m","Trizepsdrücken über Kopf (Maschine)","tri","tricepsoh",1.2],
+ ["inner_chest","Inner Chest Press (Maschine)","hpush","innerchest",3,{s:{triceps:.25,front:.25}}],["donkey_calf","Donkey-Wadenheben (Maschine)","calf","donkeycalf",1.2],
+ ["lev_squat","Leverage Squat (Maschine)","squat","levsquat",2],["legpress_v","Vertikale Beinpresse","squat","legpressv",3],["bentrow_m","Vorgebeugtes Rudern (Maschine)","hpull","bentrowm",2.5],
+ ["decline_bb","Negativ-Bankdrücken (LH)","hpush","declinebench",4],["decline_crunch","Negativ-Crunches (Bauchbank)","core","absbench",3,{r:[10,20]}],
+ ["ring_row","Ring-Rudern","hpull","rings",7,{r:[8,15]}],["ring_dip","Ring-Dips","hpush","rings",8,{r:[5,10]}],["trx_row","Rudern am Schlingentrainer","hpull","trx",7,{r:[8,15]}],["trx_pushup","Liegestütze am Schlingentrainer","hpush","trx",8,{r:[8,15]}],
+ ["wallbar_raise","Beinheben an der Sprossenwand","core","wallbars",2.5,{r:[8,15]}],["ab_rollout","Ab-Rollouts","core","abroller",3,{r:[6,12]}],["band_pullapart","Band Pull-Aparts","rear","bands",5,{r:[15,25]}],
+ ["stepup","Step-ups (KH)","squat","db+plyobox|db+bench",6.5,{r:[8,12]}],["sandbag_squat","Sandbag-Kniebeuge","squat","sandbag",7,{r:[8,12]}],["mb_slam","Medizinball-Slams","cond","medball",5,{r:[8,15],kind:"cardio"}],
+ ["wall_ball","Wall Balls","cond","medball",5,{r:[10,20],kind:"cardio"}],["box_jump","Box Jumps","cond","plyobox",5,{r:[5,10],kind:"cardio"}],["battle_rope","Battle Ropes","cond","battlerope",5,{r:[1,3],kind:"cardio"}],
+ ["treadmill","Laufband","cond","treadmill",5,{r:[10,30],kind:"cardio"}],["crosstrainer","Crosstrainer","cond","crosstrainer",5,{r:[10,30],kind:"cardio"}],["rower_c","Rudergerät (Ausdauer)","cond","rower",5,{r:[5,20],kind:"cardio"}],
+ ["stairclimber","Stair Climber","cond","stair",5,{r:[5,20],kind:"cardio"}],["bike","Ergometer / Indoor-Bike","cond","bike",5,{r:[10,30],kind:"cardio"}],
  ["cable_crunch","Kabel-Crunches","core","cablehi",1],["hlr","Beinheben hängend","core","pullup|vkr",2,{r:[8,15]}],["crunch","Crunches","core","",6,{r:[12,20]}],["deadbug","Dead Bugs","core","",7,{r:[8,15]}]
 ];
 function kindOf(need) {
@@ -80,17 +97,17 @@ function kindOf(need) {
 const EX = RAW.map(([id, n, pat, need, rank, o]) => {
   o = o || {};
   const p = PAT[pat];
-  return { id, n, pat, need, rank, m: p[0], s: o.s || p[1], c: o.c != null ? o.c : p[2], kind: kindOf(need), r: o.r || null };
+  return { id, n, pat, need, rank, m: p[0], s: o.s || p[1], c: o.c != null ? o.c : p[2], kind: o.kind || kindOf(need), r: o.r || null };
 });
 const EXMAP = Object.fromEntries(EX.map(e => [e.id, e]));
 
 /* Beschwerden -> Übungen, die dann nicht vorgeschlagen werden */
 const INJ = {
-  schulter:["dip_assist","dip_m","ohp","db_ohp","smith_ohp","machine_sp","pike","dips","bench","incline_bb","smith_bench","skull","close_bench","db_fly","hlr"],
+  schulter:["neckpress_m","viking","ring_dip","decline_bb","dip_assist","dip_m","ohp","db_ohp","smith_ohp","machine_sp","pike","dips","bench","incline_bb","smith_bench","skull","close_bench","db_fly","hlr"],
   ellbogen:["skull","oh_db","close_bench","diamond","dips","ez_curl","pullup"],
-  handgelenk:["pushup","diamond","pike","ez_curl","bench","close_bench","kb_swing"],
-  ruecken:["dl_machine","lm_row","backext_m","backext","deadlift","rdl","bb_row","bb_squat","ohp","kb_swing","tbar","sl_rdl","smith_squat"],
-  knie:["v_squat","sissy_m","pendulum","bb_squat","smith_squat","hack_squat","bss","lunge","sissy","bw_squat","goblet"],
+  handgelenk:["ab_rollout","forearm_m","wrist_curl","trx_pushup","pushup","diamond","pike","ez_curl","bench","close_bench","kb_swing"],
+  ruecken:["ghd_ext","rev_hyper","bentrow_m","dl_machine","lm_row","backext_m","backext","deadlift","rdl","bb_row","bb_squat","ohp","kb_swing","tbar","sl_rdl","smith_squat"],
+  knie:["lev_squat","legpress_v","box_jump","stepup","sandbag_squat","wall_ball","v_squat","sissy_m","pendulum","bb_squat","smith_squat","hack_squat","bss","lunge","sissy","bw_squat","goblet"],
   huefte:["deadlift","bss","lunge","kb_swing","bb_squat","sl_rdl"]
 };
 const INJN = {schulter:"Schulter",ellbogen:"Ellbogen",handgelenk:"Handgelenk",ruecken:"Unterer Rücken",knie:"Knie",huefte:"Hüfte"};
@@ -449,6 +466,8 @@ function rirFor(it, st) {
 }
 function deloadSets(n) { return Math.max(1, Math.ceil(n / 2)); }
 
+/* Ausdauer-/Konditionsübungen: Stufe statt kg, Minuten bzw. Wdh. statt Gewichtssteigerung */
+function isCardio(exId) { const e = EXMAP[exId]; return !!e && e.kind === "cardio"; }
 /* ---------- Progression pro Übung ---------- */
 function stepFor(ex, level) {
   if (!ex) return 2.5;
@@ -464,6 +483,7 @@ const roundTo = (v, st) => Math.round(v / st) * st;
 function recommend(exId, target, history, ctx) {
   ctx = ctx || {};
   const ex = EXMAP[exId], level = ctx.level || "int";
+  if (ex && ex.kind === "cardio") return {kind: "new", kg: null, reps: null, text: ex.pat === "cond" && /treadmill|crosstrainer|rower_c|stairclimber|bike|battle_rope/.test(exId) ? "Ausdauer: Stufe/Tempo und Minuten eintragen. Steigere zuerst die Dauer, dann die Stufe." : "Kondition: sauber und explosiv, Wiederholungen eintragen."};
   const tg = target || {repMin: 8, repMax: 12, rir: 2};
   const last = history && history[0];
   if (!last || !last.sets || !last.sets.length) {
@@ -561,6 +581,6 @@ function nextDay(plan, workouts) {
   return (done[0].planDay + 1) % plan.days.length;
 }
 
-const API = {IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor};
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
