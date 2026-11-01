@@ -49,6 +49,10 @@ document.addEventListener("click",e=>{
  case"offSearch":offSearch(($("#q")||{}).value||"");break;
  case"pickOff":{const p=SH.offRes&&SH.offRes[+d.i];if(p){const meal=($("#mealSel")||{}).value||SH.meal;M.products[p.id]=Object.assign({},M.products[p.id]||{},p);persist("main");amountSheet(M.products[p.id],meal)}break}
  case"exportData":exportData();break;
+ case"wDetail":wDetailSheet(d.id);break;
+ case"wAll":wAllSheet();break;
+ case"wDel":{const w=WORKOUTS[d.id];if(!w)break;openConfirm(`Training „${w.dayName||"Training"}“ vom ${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE")} löschen?`,"Löschen",()=>deleteWorkout(d.id));break}
+ case"undo":{const f=UNDO;UNDO=null;$("#toast").hidden=true;if(f)f();break}
  case"impMerge":if(SH&&SH.imp)importMerge(SH.imp);break;
  case"impReplace":if(SH&&SH.imp){const j=SH.imp;openConfirm("Wirklich alle Daten auf diesem Gerät ersetzen? Das lässt sich nicht rückgängig machen.","Ersetzen",()=>importReplace(j))}break;
  case"bkLater":try{localStorage.setItem("et-bklater",String(Date.now()))}catch(e){}render();break;

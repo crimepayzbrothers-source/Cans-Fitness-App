@@ -99,6 +99,26 @@ function oldDays(P){return P.days.map((d,di)=>`<div class="card daycard"><div cl
 function exHistory(exId,excludeId){return Object.values(WORKOUTS).filter(w=>w.id!==excludeId).sort((a,b)=>b.start-a.start).map(w=>{const e=(w.exercises||[]).find(x=>x.ex===exId&&x.sets&&x.sets.some(t=>t.type!=="warm"));return e?{date:w.date,sets:e.sets.filter(t=>t.type!=="warm")}:null}).filter(Boolean)}
 function lastSets(exId,excludeId){return exHistory(exId,excludeId)[0]||null}
 function daysSinceLast(){const ws=Object.values(WORKOUTS);if(!ws.length)return 0;return(Date.now()-Math.max(...ws.map(w=>w.start)))/864e5}
+/* ---------- Gespeicherte Trainings ansehen und löschen ---------- */
+const workSetCount=w=>(w.exercises||[]).reduce((s,e)=>s+e.sets.filter(x=>x.type!=="warm"&&(x.reps||0)>0).length,0);
+function wCard(w){return`<button class="card wcard" data-act="wDetail" data-id="${esc(w.id)}"><div class="row"><b class="grow">${esc(w.dayName||"Training")}</b><span class="small muted">${dayLabel(w.date)}</span>${svgI.chev}</div><div class="small muted">${(w.exercises||[]).length} Übungen · ${workSetCount(w)} Sätze · ${fmt(volume(w))} kg Volumen${w.feel?` · ${{leicht:"leicht",passt:"passend",hart:"hart"}[w.feel]}`:""}</div></button>`}
+function wAllSheet(){const ws=Object.values(WORKOUTS).sort((a,b)=>b.start-a.start);SH={wAll:1};
+ openSheet(`${sheetHd("Alle Trainings")}<div class="stack"><div class="small muted">${ws.length} gespeicherte Trainings. Antippen zum Ansehen oder Löschen.</div>${ws.map(wCard).join("")}</div>`,SH)}
+function wDetailSheet(id){const w=WORKOUTS[id];if(!w)return;SH={wDetail:id};const dur=w.end?Math.round((w.end-w.start)/60000):null;
+ openSheet(`${sheetHd(esc(w.dayName||"Training"))}<div class="stack"><div class="small muted">${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}${dur!=null?` · ${dur} Min`:""} · ${workSetCount(w)} Sätze · ${fmt(volume(w))} kg</div>
+ ${(w.exercises||[]).length?(w.exercises||[]).map(e=>`<div class="card"><b>${esc((EXMAP[e.ex]||{}).n||e.ex)}</b><div class="small muted num">${e.sets.filter(s=>(s.reps||0)>0).map(s=>`${s.type&&STLBL[s.type]?STLBL[s.type]+" ":""}${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")||"keine Sätze eingetragen"}</div></div>`).join(""):`<div class="empty small">Keine Übungen eingetragen.</div>`}
+ ${w.note?`<div class="card small">${esc(w.note)}</div>`:""}
+ <button class="btn danger block" data-act="wDel" data-id="${esc(id)}">Training löschen</button>
+ <div class="small muted">Löschen entfernt das Training aus Verlauf, Statistik, Bestleistungen und Wochenbericht. Die zuletzt verwendeten Gewichte im Plan werden auf das vorherige Training zurückgesetzt.</div></div>`,SH)}
+/* Plan-Werte, die aus diesem Training stammen (zuletzt verwendetes Gewicht), auf das vorherige Training zurücksetzen */
+function revertPlanFrom(w){const P=M.plan;if(!P||w.planId!==P.id||w.planDay==null||!P.days[w.planDay])return 0;let n=0;
+ P.days[w.planDay].items.forEach(it=>{if(!it.last||it.last.date!==w.date)return;const h=exHistory(it.ex,w.id)[0];
+  if(h){const top=h.sets.filter(x=>x.reps>0).sort((a,b)=>(b.kg||0)-(a.kg||0)||b.reps-a.reps)[0];if(top){it.last={kg:top.kg||0,reps:top.reps,rir:top.rir??null,date:h.date};if(top.kg>0)it.kg=top.kg}}else delete it.last;n++});return n}
+function deleteWorkout(id){const w=WORKOUTS[id];if(!w)return;const copy=clone(w),planBefore=M.plan?clone(M.plan):null;
+ revertPlanFrom(w);delete WORKOUTS[id];
+ if(M.plan){M.plan.log=M.plan.log||[];M.plan.log.unshift({d:today(),t:`Training „${w.dayName||"Training"}“ vom ${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE")} gelöscht`});M.plan.log=M.plan.log.slice(0,40)}
+ persist("workouts/"+id,true);persist("main");closeSheet();render();
+ toastUndo("Training gelöscht",()=>{WORKOUTS[id]=copy;if(planBefore&&M.plan&&M.plan.id===planBefore.id)M.plan=planBefore;persist("workouts/"+id,true);persist("main");render();toast("Training wiederhergestellt")})}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
 
 /* ---------- Design: dunkel, hell oder wie das System ---------- */
@@ -147,7 +167,7 @@ function vTrain(){
    ${P.days.length>1?`<div class="lbl">Andere Einheit</div>${P.days.map((d,di)=>di===nd?"":`<div class="card row"><div class="grow"><b>${esc(d.name)}</b><div class="small muted">${d.items.length} Übungen</div></div><button class="btn sm ghost" data-act="start" data-d="${di}">Starten</button></div>`).join("")}`:""}`
   :`<div class="empty"><div>Noch kein Plan. Erstelle einen oder trainiere frei.</div><a class="btn primary" href="#plan">Zum Plan</a></div>`}
   <button class="btn ghost block" data-act="start" data-d="-1">Freies Training starten</button>
-  ${recent.length?`<div class="lbl" style="margin-top:8px">Zuletzt</div>${recent.map(w=>`<div class="card"><div class="row"><b class="grow">${esc(w.dayName||"Training")}</b><span class="small muted">${dayLabel(w.date)}</span></div><div class="small muted">${(w.exercises||[]).length} Übungen · ${(w.exercises||[]).reduce((s,e)=>s+e.sets.length,0)} Sätze · ${fmt(volume(w))} kg Volumen${w.feel?` · ${{leicht:"leicht",passt:"passend",hart:"hart"}[w.feel]}`:""}</div></div>`).join("")}`:""}
+  ${recent.length?`<div class="row" style="margin-top:8px"><div class="lbl grow">Zuletzt</div>${Object.keys(WORKOUTS).length>recent.length?`<button class="linkbtn" data-act="wAll">Alle ${Object.keys(WORKOUTS).length} anzeigen</button>`:""}</div>${recent.map(wCard).join("")}`:""}
   </div>`;
  }
  const mins=Math.floor((Date.now()-A.start)/60000);
