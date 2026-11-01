@@ -107,5 +107,11 @@ for (const e of P.EX) for (const W of [12, 25, 40, 62.5, 100, 180]) {
   ws.forEach((w, i) => { if (w.kg >= W || (i && w.kg <= ws[i - 1].kg) || w.reps < 1 || (bar && (w.kg < bar || Math.abs(w.kg / 2.5 - Math.round(w.kg / 2.5)) > 1e-9))) wuBad.push(`${e.id}@${W}`); });
 }
 console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "ok"); if (wuBad.length) fails++;
+// Erholung: frisch ohne Training, sinkt mit mehr Sätzen, steigt mit der Zeit, nach 72 h wieder 100 %
+{ const now = Date.now(), w = (h, n, rir) => ({end: now - h * 36e5, exercises: [{ex: "bench", sets: Array.from({length: n}, () => ({kg: 80, reps: 8, rir, done: true}))}]});
+  const r0 = P.recovery([], now), a = P.recovery([w(0, 4, 2)], now).chest, b = P.recovery([w(0, 8, 2)], now).chest, c = P.recovery([w(24, 4, 2)], now).chest, d = P.recovery([w(73, 8, 0)], now).chest;
+  const hard = P.recovery([w(0, 4, 0)], now).chest, easy = P.recovery([w(0, 4, 4)], now).chest, warm = P.recovery([{end: now, exercises: [{ex: "bench", sets: [{kg: 40, reps: 8, type: "warm"}]}]}], now).chest;
+  const ok = Object.values(r0).every(v => v === 100) && b < a && a < c && d === 100 && hard < easy && warm === 100 && P.recovery([w(0, 4, 2)], now).triceps > a;
+  console.log("Erholung:", ok ? `ok (4 Sätze: ${a} %, 8 Sätze: ${b} %, nach 24 h: ${c} %)` : "FEHLER"); if (!ok) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 
