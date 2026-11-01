@@ -117,5 +117,16 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
 { const v = P.setsByMuscle([{exercises: [{ex: "bench", sets: [{kg: 60, reps: 8}, {kg: 60, reps: 8}, {kg: 20, reps: 10, type: "warm"}, {kg: 60, reps: 0}]}]}]);
   const ok = v.chest === 2 && v.triceps === 1 && v.front === 1 && v.back === 0;
   console.log("Sätze je Muskel:", ok ? "ok" : "FEHLER " + JSON.stringify(v)); if (!ok) fails++; }
+// Rückmeldung je Muskel: +1 erhöht, −1 senkt, nicht erholter Muskel bekommt keinen Satz mehr, Vorrang vor dem Gesamtgefühl
+{ const mk = () => { const pl = P.generate(profiles[2][1]); return pl; };
+  const pl = mk(), d0 = pl.days[0], ms = [...new Set(d0.items.map(i => P.EXMAP[i.ex].m))];
+  const wk = {exercises: d0.items.map(i => ({ex: i.ex, sets: [{kg: 50, reps: 10, rir: 2}]}))};
+  const sum = (p, m) => p.days[0].items.filter(i => P.EXMAP[i.ex].m === m).reduce((a, i) => a + i.sets, 0);
+  const [mA, mB, mC] = ms; const bA = sum(pl, mA), bB = sum(pl, mB), bC = mC ? sum(pl, mC) : 0;
+  const log = P.adapt(pl, 0, wk, "passt", () => 50, "2026-W45", {mfb: {[mA]: 1, [mB]: -1, ...(mC ? {[mC]: 1} : {})}, rec: mC ? {[mC]: 50} : {}});
+  const ok = sum(pl, mA) === bA + 1 && sum(pl, mB) === bB - 1 && (!mC || sum(pl, mC) === bC) && log.some(t => /erholt/.test(t) || !mC);
+  const pl2 = mk(); const b2 = sum(pl2, mA); P.adapt(pl2, 0, wk, "leicht", () => 50, "2026-W45", {mfb: {[mA]: -1}});
+  const ok2 = sum(pl2, mA) === b2 - 1;
+  console.log("Rückmeldung je Muskel:", ok && ok2 ? "ok (" + log.join(" | ") + ")" : "FEHLER " + log.join(" | ")); if (!(ok && ok2)) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 
