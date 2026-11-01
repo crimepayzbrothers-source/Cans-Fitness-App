@@ -678,6 +678,39 @@ function setsByMuscle(workouts) {
   return v;
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle};
+/* ---------- Übertragung zwischen Geräten ohne Cloud: Sicherung zusammenführen ----------
+   Trainings: Vereinigung über die ID; gibt es eine ID auf beiden Geräten, gewinnt die zuletzt beendete Fassung.
+   Ernährungstage: Vereinigung über das Datum; gleiche Einträge werden nicht doppelt übernommen, Wasser = höherer Wert.
+   Plan, Profil und Einstellungen bleiben die dieses Geräts (sind sie leer, kommen sie aus der Datei);
+   Körpergewichte und eigene Lebensmittel werden vereinigt. Ein laufendes Training wird nie übernommen. */
+function mergeData(local, inc) {
+  const L = local || {}, I = inc || {}, out = {M: JSON.parse(JSON.stringify(L.M || {})), DAYS: JSON.parse(JSON.stringify(L.DAYS || {})), WORKOUTS: JSON.parse(JSON.stringify(L.WORKOUTS || {}))};
+  const st = {workouts: 0, days: 0, entries: 0, weights: 0, products: 0};
+  const t = w => (w && (w.end || w.start)) || 0;
+  for (const [id, w] of Object.entries(I.WORKOUTS || {})) {
+    if (!out.WORKOUTS[id]) { out.WORKOUTS[id] = JSON.parse(JSON.stringify(w)); st.workouts++; }
+    else if (t(w) > t(out.WORKOUTS[id])) out.WORKOUTS[id] = JSON.parse(JSON.stringify(w));
+  }
+  const sig = e => [e.pid, e.name, e.g, e.kcal, e.t || ""].join("|");
+  for (const [d, day] of Object.entries(I.DAYS || {})) {
+    if (!out.DAYS[d]) { out.DAYS[d] = JSON.parse(JSON.stringify(day)); st.days++; continue; }
+    const tgt = out.DAYS[d]; tgt.meals = tgt.meals || {};
+    for (const [m, list] of Object.entries((day && day.meals) || {})) {
+      const have = new Set((tgt.meals[m] || []).map(sig)); tgt.meals[m] = tgt.meals[m] || [];
+      for (const e of list || []) if (!have.has(sig(e))) { tgt.meals[m].push(JSON.parse(JSON.stringify(e))); have.add(sig(e)); st.entries++; }
+    }
+    if (day.water != null) tgt.water = Math.max(+tgt.water || 0, +day.water || 0);
+  }
+  const IM = I.M || {}, OM = out.M;
+  const ws = new Map((OM.weights || []).map(w => [w.d, w]));
+  for (const w of IM.weights || []) if (!ws.has(w.d)) { ws.set(w.d, w); st.weights++; }
+  OM.weights = [...ws.values()].sort((a, b) => (a.d < b.d ? -1 : 1));
+  OM.products = OM.products || {};
+  for (const [k, v] of Object.entries(IM.products || {})) if (!OM.products[k]) { OM.products[k] = v; st.products++; }
+  for (const k of Object.keys(IM)) if (k !== "active" && k !== "lastBackup" && (OM[k] == null || (typeof OM[k] === "object" && !Array.isArray(OM[k]) && !Object.keys(OM[k]).length))) OM[k] = JSON.parse(JSON.stringify(IM[k]));
+  return {data: out, stats: st};
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle, mergeData};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);

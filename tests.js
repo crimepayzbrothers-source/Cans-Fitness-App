@@ -132,5 +132,12 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
 { const ok = P.e1rm({kg: 100, reps: 5, type: "warm"}) === 0 && P.e1rm({kg: 100, reps: 5}) > 100 && P.e1rm({kg: 60, reps: 10, type: "drop"}) > 60 && P.e1rm({kg: 80, reps: 8, type: "fail"}) === P.e1rm({kg: 80, reps: 8});
   const rec = P.recommend("bench", {repMin: 6, repMax: 10, rir: 2, sets: 3}, [{sets: [{kg: 80, reps: 10, rir: 2}]}], {});
   console.log("Satztypen:", ok && rec.kg >= 80 ? "ok" : "FEHLER"); if (!(ok && rec.kg >= 80)) fails++; }
+// Zusammenführen zweier Geräte: Vereinigung ohne Doppelte, neueste Fassung gewinnt, Plan des Geräts bleibt
+{ const A = {M: {plan: {id: "pA"}, weights: [{d: "2026-10-01", kg: 80}], products: {x: 1}}, DAYS: {"2026-10-01": {meals: {fr: [{pid: "a", name: "Hafer", g: 50, kcal: 370}]}, water: 1}}, WORKOUTS: {w1: {id: "w1", start: 1, end: 10}, w2: {id: "w2", start: 5, end: 6}}};
+  const B = {M: {plan: {id: "pB"}, weights: [{d: "2026-10-01", kg: 81}, {d: "2026-10-05", kg: 80.5}], products: {y: 2}, active: {id: "x"}}, DAYS: {"2026-10-01": {meals: {fr: [{pid: "a", name: "Hafer", g: 50, kcal: 370}, {pid: "b", name: "Milch", g: 200, kcal: 64}]}, water: 2}, "2026-10-02": {meals: {}}}, WORKOUTS: {w2: {id: "w2", start: 5, end: 9, v: "neu"}, w3: {id: "w3", start: 20, end: 30}}};
+  const r = P.mergeData(A, B), d = r.data;
+  const ok = Object.keys(d.WORKOUTS).length === 3 && d.WORKOUTS.w2.v === "neu" && d.DAYS["2026-10-01"].meals.fr.length === 2 && d.DAYS["2026-10-01"].water === 2 && d.DAYS["2026-10-02"] && d.M.plan.id === "pA" && d.M.weights.length === 2 && d.M.weights[0].kg === 80 && d.M.products.y === 2 && !d.M.active && A.WORKOUTS.w3 === undefined;
+  const again = P.mergeData(d, B).stats; const ok2 = again.workouts === 0 && again.entries === 0 && again.days === 0;
+  console.log("Zusammenführen:", ok && ok2 ? "ok " + JSON.stringify(r.stats) : "FEHLER " + JSON.stringify(r.stats)); if (!(ok && ok2)) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 

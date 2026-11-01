@@ -49,6 +49,9 @@ document.addEventListener("click",e=>{
  case"offSearch":offSearch(($("#q")||{}).value||"");break;
  case"pickOff":{const p=SH.offRes&&SH.offRes[+d.i];if(p){const meal=($("#mealSel")||{}).value||SH.meal;M.products[p.id]=Object.assign({},M.products[p.id]||{},p);persist("main");amountSheet(M.products[p.id],meal)}break}
  case"exportData":exportData();break;
+ case"impMerge":if(SH&&SH.imp)importMerge(SH.imp);break;
+ case"impReplace":if(SH&&SH.imp){const j=SH.imp;openConfirm("Wirklich alle Daten auf diesem Gerät ersetzen? Das lässt sich nicht rückgängig machen.","Ersetzen",()=>importReplace(j))}break;
+ case"bkLater":try{localStorage.setItem("et-bklater",String(Date.now()))}catch(e){}render();break;
  case"importData":$("#importIn").click();break;
  case"codeGo":handleCode($("#codeIn").value);break;
  case"labelPhoto":$("#labelIn").click();break;
@@ -198,14 +201,20 @@ document.addEventListener("change",e=>{if(e.target.id==="libM"){UI.libM=e.target
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#sheetwrap").hidden)closeSheet();if(e.key==="Enter"&&e.target.id==="codeIn")handleCode(e.target.value);if(e.key==="Enter"&&e.target.id==="q")offSearch(e.target.value)});
 
 /* ---------- backup ---------- */
-async function exportData(){const data=JSON.stringify({app:"eisen-teller",v:1,exported:new Date().toISOString(),M,DAYS,WORKOUTS});const name=`cans-fitness-sicherung-${today()}.json`;
+async function exportData(){M.lastBackup=new Date().toISOString();persist("main");const data=JSON.stringify({app:"eisen-teller",v:1,exported:M.lastBackup,M:Object.assign({},M,{active:null}),DAYS,WORKOUTS});const name=`cans-fitness-sicherung-${today()}.json`;
  try{const file=new File([data],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:"Cans Fitness App – Sicherung"});return}}catch(e){if(e&&e.name==="AbortError")return}
  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);toast("Sicherung gespeichert")}
 $("#importIn").addEventListener("change",async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;let j;try{j=JSON.parse(await f.text())}catch(err){toast("Das ist keine gültige Sicherungsdatei.");return}
  if(!j||j.app!=="eisen-teller"||!j.M){toast("Das ist keine Sicherung der Cans Fitness App.");return}
- openConfirm(`Sicherung vom ${new Date(j.exported).toLocaleDateString("de-DE")} laden? Die aktuellen Daten auf diesem Gerät werden ersetzt.`,"Sicherung laden",async()=>{
-  try{Object.keys(localStorage).filter(k=>k.startsWith("et/")).forEach(k=>localStorage.removeItem(k))}catch(err){}
-  M=Object.assign(M,j.M);DAYS=j.DAYS||{};WORKOUTS=j.WORKOUTS||{};
-  await Store.write("main",clone(M));for(const id in DAYS)await Store.write("days/"+id,{...DAYS[id],date:id});for(const id in WORKOUTS)await Store.write("workouts/"+id,WORKOUTS[id]);
-  syncPlanToEquipment();persist("main");render();toast("Sicherung geladen")})});
+ const nW=Object.keys(j.WORKOUTS||{}).length,nD=Object.keys(j.DAYS||{}).length,newW=Object.keys(j.WORKOUTS||{}).filter(id=>!WORKOUTS[id]).length;
+ SH={imp:j};openSheet(`${sheetHd("Sicherung laden")}<div class="stack"><div class="small muted">Datei vom ${new Date(j.exported).toLocaleString("de-DE",{dateStyle:"medium",timeStyle:"short"})}: ${nW} Trainings, ${nD} Ernährungstage. Davon ${newW} Trainings, die auf diesem Gerät fehlen.</div>
+ <button class="btn primary block" data-act="impMerge">Zusammenführen (empfohlen)</button><div class="small muted">Fügt fehlende Trainings, Ernährungseinträge und Gewichte hinzu. Plan und Einstellungen dieses Geräts bleiben. So nutzt du zwei Geräte abwechselnd.</div>
+ <button class="btn danger block" data-act="impReplace">Alles ersetzen</button><div class="small muted">Löscht die Daten auf diesem Gerät und übernimmt die Datei vollständig, z. B. beim Umzug auf ein neues Handy.</div></div>`,SH)});
+async function writeAll(){await Store.write("main",clone(M));for(const id in DAYS)await Store.write("days/"+id,{...DAYS[id],date:id});for(const id in WORKOUTS)await Store.write("workouts/"+id,WORKOUTS[id])}
+async function importReplace(j){try{Object.keys(localStorage).filter(k=>k.startsWith("et/")).forEach(k=>localStorage.removeItem(k))}catch(err){}
+ M=Object.assign(M,j.M);DAYS=j.DAYS||{};WORKOUTS=j.WORKOUTS||{};await writeAll();syncPlanToEquipment();persist("main");closeSheet();render();toast("Sicherung geladen")}
+async function importMerge(j){const act=M.active;const r=PL.mergeData({M,DAYS,WORKOUTS},j);M=Object.assign(M,r.data.M);M.active=act;DAYS=r.data.DAYS;WORKOUTS=r.data.WORKOUTS;
+ try{await writeAll()}catch(e){toast(e&&e.code==="quota_exceeded"?"Speicher voll – nicht alles konnte übernommen werden.":"Speichern hat nicht geklappt.");return}
+ syncPlanToEquipment();persist("main");closeSheet();render();const s=r.stats;
+ toast(`Zusammengeführt: ${s.workouts} Trainings, ${s.days} Ernährungstage, ${s.entries} Einträge, ${s.weights} Gewichte neu`)}
 
