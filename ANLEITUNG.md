@@ -22,7 +22,7 @@ Die Kamera funktioniert nur über eine `https://`-Adresse. Deshalb muss der Ordn
 ### Weg B: GitHub Pages
 1. Kostenloses Konto auf https://github.com anlegen.
 2. Neues Repository erstellen, z. B. `eisen-teller` (Public).
-3. *Add file → Upload files* wählen und alle Dateien aus dem Ordner hochladen (nicht den Ordner selbst).
+3. *Add file → Upload files* wählen und alle Dateien und Unterordner (`css`, `js`, `fonts`) hochladen, mit derselben Ordnerstruktur.
 4. *Settings → Pages* öffnen, dort *Branch: main* und */ (root)* wählen und speichern.
 5. Nach 1–2 Minuten ist die App erreichbar unter `https://DEINNAME.github.io/eisen-teller/`.
 
@@ -46,10 +46,32 @@ Ein Tipp: Mach das etwa einmal pro Woche.
 
 ## 4. Updates
 
-Wenn du eine neue Version der Dateien bekommst, lädst du sie genauso hoch wie beim ersten Mal. In `sw.js` die Zeile `const CACHE = "et-v3";` auf die nächste Nummer (z. B. `et-v4`) erhöhen, dann holt sich die App die neue Version beim nächsten Öffnen. Deine Daten bleiben dabei erhalten.
+Wenn du eine neue Version der Dateien bekommst, lädst du sie genauso hoch wie beim ersten Mal. In `sw.js` die Zeile `const CACHE = "et-v…";` auf die nächste Nummer erhöhen, dann holt sich die App die neue Version beim nächsten Öffnen. Deine Daten bleiben dabei erhalten.
 
 ## Wenn der Scan nicht klappt
 
 - Für gutes Licht sorgen und den Barcode waagerecht in den Rahmen halten, mit etwa 10–15 cm Abstand.
 - Klappt der Live-Scan gar nicht, nimm über *Stattdessen Foto aufnehmen* ein Foto oder tippe die Nummer ein.
 - Fehlt ein Produkt bei Open Food Facts, legst du es einmal selbst an. Danach erkennt die App es sofort.
+
+
+## Aufbau des Codes
+
+| Datei | Inhalt |
+| --- | --- |
+| `index.html` | Grundgerüst, lädt alle anderen Dateien |
+| `css/app.css` | Gestaltung (dunkles und helles Design) |
+| `js/basis.js` | Hilfsfunktionen, Geräteliste, Zustand, Speicher, Router |
+| `js/training.js` | Startseiten-Kennzahlen, Aufwärmsätze, Scheibenrechner, Trainingsansicht |
+| `js/ernaehrung.js` | Lebensmittel erfassen, Barcode, KI-Foto-Analyse |
+| `js/plan.js` | Plan-Assistent, Geräteabgleich, Trainingsablauf, Wochenplanung |
+| `js/ansichten.js` | Startseite, Plan, Übungsdetail, Statistik, Wochenbericht, Erholung |
+| `js/profil.js` | Profil, Wasser |
+| `js/aktionen.js` | Reaktion auf Tippen und Eingaben, Sicherung |
+| `js/start.js` | App-Start |
+| `planner.js` | Übungsdatenbank, Planer, Progression, Erholung, Rechner (mit `node tests.js` testbar) |
+| `figure.js`, `figure3d.js` | 2D- und 3D-Anleitungen |
+| `geraete.js` | Gerätemodelle (gym80, Technogym, Hammer Strength, FitX) |
+| `ai.js` | KI-Anbieter für die Foto-Analyse |
+
+Die Dateien in `js/` sind klassische Skripte und teilen sich einen gemeinsamen Gültigkeitsbereich. Die Reihenfolge in `index.html` muss erhalten bleiben. Bei jeder Änderung die `?v=`-Nummer der geänderten Datei und `CACHE` in `sw.js` erhöhen.
