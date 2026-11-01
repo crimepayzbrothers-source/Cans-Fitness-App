@@ -153,6 +153,10 @@ nav.tabs a.on{color:var(--accent)}
 .warm .lbl{margin:0}
 .wus{display:flex;flex-wrap:wrap;gap:6px;font-size:14px}
 .wu{border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.recmap{width:100%;max-width:340px;height:auto;margin:0 auto;display:block}
+.recmap g[data-m]{stroke:rgba(0,0,0,.25);stroke-width:.6}
+.reclegend{display:flex;gap:14px;justify-content:center;color:var(--muted)}
+.reclegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 #plOut svg{width:100%;height:auto;display:block}
 #plOut .big{font-family:var(--display);font-weight:700;font-size:24px}
 .sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px}
@@ -440,7 +444,7 @@ svg.big{height:260px;width:auto}
 <input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
-<script src="planner.js?v=23"></script>
+<script src="planner.js?v=24"></script>
 <script src="ai.js?v=23"></script>
 <script src="figure.js?v=23"></script>
 <script src="geraete.js?v=2"></script>
@@ -1319,6 +1323,47 @@ function monthTrend(ws,now){now=now||new Date();const D=now.getDate();if(D<7)ret
 function prsSince(since){const best={};let n=0;Object.values(WORKOUTS).sort((a,b)=>a.start-b.start).forEach(w=>(w.exercises||[]).forEach(e=>{if(PL.isCardio(e.ex))return;const b=Math.max(0,...e.sets.map(PL.e1rm));if(!b)return;if(best[e.ex]!=null&&b>best[e.ex]*1.001&&w.date>=since)n++;if(best[e.ex]==null||b>best[e.ex])best[e.ex]=b}));return n}
 
 /* ---------- Körpergrafik: Primär blau, Sekundär orange ---------- */
+/* ---------- Erholung je Muskel: eigene Vorder-/Rückansicht, Farbe = geschätzte Erholung ---------- */
+const recCol=v=>v>=90?"var(--f)":v>=60?"var(--warn)":"var(--kcal)";
+function recoveryMap(R){
+ const c=m=>`fill="${recCol(R[m]??100)}" fill-opacity="${(R[m]??100)>=90?.55:.9}"`,t=m=>`<title>${PL.MUSN[m]}: ${R[m]??100} % erholt</title>`;
+ const g=(m,shape)=>`<g data-m="${m}" ${c(m)}>${t(m)}${shape}</g>`,base=`fill="var(--surface2)" stroke="var(--line)"`;
+ const front=`<g>
+  <circle cx="60" cy="16" r="10" ${base}/><rect x="55" y="26" width="10" height="7" rx="3" ${base}/>
+  ${g("side",`<ellipse cx="28" cy="45" rx="5" ry="7.5"/><ellipse cx="92" cy="45" rx="5" ry="7.5"/>`)}
+  ${g("front",`<ellipse cx="39" cy="42" rx="5.5" ry="6.5"/><ellipse cx="81" cy="42" rx="5.5" ry="6.5"/>`)}
+  ${g("chest",`<path d="M47 37h12v20c-5 2-10 1-13-2-1-6-1-12 1-18z"/><path d="M73 37H61v20c5 2 10 1 13-2 1-6 1-12-1-18z"/>`)}
+  ${g("biceps",`<ellipse cx="29" cy="64" rx="5.5" ry="12"/><ellipse cx="91" cy="64" rx="5.5" ry="12"/>`)}
+  ${g("forearms",`<ellipse cx="25" cy="91" rx="4.5" ry="12"/><ellipse cx="95" cy="91" rx="4.5" ry="12"/>`)}
+  ${g("abs",`<rect x="50" y="60" width="20" height="36" rx="6"/>`)}
+  ${g("quads",`<ellipse cx="49" cy="130" rx="9" ry="22"/><ellipse cx="71" cy="130" rx="9" ry="22"/>`)}
+  ${g("adductors",`<ellipse cx="57" cy="118" rx="3" ry="10"/><ellipse cx="63" cy="118" rx="3" ry="10"/>`)}
+  ${g("tibialis",`<ellipse cx="48" cy="176" rx="4" ry="14"/><ellipse cx="72" cy="176" rx="4" ry="14"/>`)}
+  <text x="60" y="210" text-anchor="middle" font-size="10" fill="var(--muted)">vorne</text></g>`;
+ const back=`<g transform="translate(130 0)">
+  <circle cx="60" cy="16" r="10" ${base}/>
+  ${g("traps",`<path d="M50 27l-9 10h38l-9-10z"/>`)}
+  ${g("rear",`<ellipse cx="34" cy="44" rx="7" ry="7"/><ellipse cx="86" cy="44" rx="7" ry="7"/>`)}
+  ${g("back",`<path d="M44 40h32c2 12-1 24-6 32H50c-5-8-8-20-6-32z"/>`)}
+  ${g("lowback",`<rect x="51" y="74" width="18" height="20" rx="5"/>`)}
+  ${g("triceps",`<ellipse cx="29" cy="64" rx="5.5" ry="12"/><ellipse cx="91" cy="64" rx="5.5" ry="12"/>`)}
+  <ellipse cx="25" cy="91" rx="4.5" ry="12" ${base}/><ellipse cx="95" cy="91" rx="4.5" ry="12" ${base}/>
+  ${g("glutes",`<ellipse cx="51" cy="104" rx="10" ry="9"/><ellipse cx="69" cy="104" rx="10" ry="9"/>`)}
+  ${g("hams",`<ellipse cx="50" cy="136" rx="8.5" ry="20"/><ellipse cx="70" cy="136" rx="8.5" ry="20"/>`)}
+  ${g("calves",`<ellipse cx="49" cy="176" rx="6" ry="14"/><ellipse cx="71" cy="176" rx="6" ry="14"/>`)}
+  <text x="60" y="210" text-anchor="middle" font-size="10" fill="var(--muted)">hinten</text></g>`;
+ return`<svg class="recmap" viewBox="0 0 250 216" role="img" aria-label="Erholung je Muskel">${front}${back}</svg>`}
+function recoveryNow(){return PL.recovery(Object.values(WORKOUTS))}
+function recoveryCard(){const ws=Object.values(WORKOUTS);if(!ws.length)return"";const R=recoveryNow();
+ const tired=Object.keys(R).filter(m=>R[m]<90&&PL.MUSN[m]).sort((a,b)=>R[a]-R[b]);
+ return`<div class="card stack"><div class="row"><h3 class="grow">Erholung</h3><span class="small muted">Schätzung</span></div>
+ ${recoveryMap(R)}
+ <div class="reclegend small"><span><i style="background:var(--f)"></i>erholt</span><span><i style="background:var(--warn)"></i>teilweise</span><span><i style="background:var(--kcal)"></i>stark beansprucht</span></div>
+ ${tired.length?`<div class="small">${tired.slice(0,5).map(m=>`<b>${PL.MUSN[m]}</b> ${R[m]} % · frisch in ca. ${Math.max(6,PL.hoursToFresh(ws,m))} h`).join("<br>")}</div>`:`<div class="small muted">Alle Muskeln sind erholt.</div>`}
+ <div class="small muted">Aus deinen Sätzen der letzten Tage: große Muskeln brauchen etwa 72 h, kleine etwa 48 h. Nahe am Versagen zählt ein Satz mehr.</div></div>`}
+/* Hinweis für die nächste Einheit, wenn ihr Hauptmuskel noch deutlich beansprucht ist */
+function recoveryHint(day){if(!day)return"";const R=recoveryNow();const low=dayMuscles(day).filter(m=>R[m]!=null&&R[m]<70);
+ return low.length?`<div class="small" style="color:var(--warn)">Noch nicht ganz erholt: ${low.map(m=>`${PL.MUSN[m]} ${R[m]} %`).join(", ")}</div>`:""}
 function bodySvg(set,sec,cls){
  sec=sec||new Set();
  const on=(...ms)=>ms.some(m=>set.has(m))?"on":ms.some(m=>sec.has(m))?"on2":"";
@@ -1356,7 +1401,7 @@ function vHome(){
  if(M.active){const A=M.active;hero=`<div class="card hero">${bodySvg(new Set(A.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)))}<div class="txt"><div class="lbl">Training läuft</div><h2>${esc(A.dayName)}</h2><div class="small muted">${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} von ${A.exercises.reduce((s,e)=>s+e.sets.length,0)} Sätzen erledigt</div></div><a class="btn glow block" href="#training">Weiter trainieren →</a></div>`}
  else if(P){const ps=planState(),up=upcoming(P),nd=up.di,day=P.days[nd],its=day.items.map(it=>itemView(it,ps)),ms=dayMuscles(day);
   hero=`<div class="card hero" data-act="dayOpen" data-d="${nd}">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${up.today?"Heutiges Training":"Als Nächstes"+(up.wd!=null?" · "+WD[up.wd]:"")}</div><h2>${esc(day.name)}</h2><div class="small muted">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div></div>
-  <div class="meta"><span>${svgI.list} ${day.items.length} Übungen</span><span>${svgI.clock} ${P.v===2?PL.estMinutes(its):"–"} Min</span><span>${svgI.bolt} ${ps&&ps.deload?"Deload":intensityTxt(its)}</span><button class="linkbtn" data-act="moveDay" data-d="${nd}">📅 Verschieben</button></div>
+  ${recoveryHint(day)}<div class="meta"><span>${svgI.list} ${day.items.length} Übungen</span><span>${svgI.clock} ${P.v===2?PL.estMinutes(its):"–"} Min</span><span>${svgI.bolt} ${ps&&ps.deload?"Deload":intensityTxt(its)}</span><button class="linkbtn" data-act="moveDay" data-d="${nd}">📅 Verschieben</button></div>
   <button class="btn glow block" data-act="start" data-d="${nd}">Training starten →</button></div>`}
  else hero=`<div class="card hero">${bodySvg(new Set())}<div class="txt"><div class="lbl">Heutiges Training</div><h2>Noch kein Plan</h2><div class="small muted">Erstelle in 7 Schritten einen Plan, der zu deinem Studio passt.</div></div><a class="btn glow block" href="#plan">Plan erstellen →</a></div>`;
  const tile=(ic,v,l)=>`<div class="card tile"><div class="ic">${ic}</div><div style="min-width:0"><div class="v">${v}</div><div class="l">${l}</div></div></div>`;
@@ -1370,6 +1415,7 @@ function vHome(){
  <div class="card wdots">${dots}</div>
  ${hero}
  <a class="card row" href="#ernaehrung" style="text-decoration:none;color:inherit"><div class="grow"><div class="lbl">Ernährung heute</div><div class="num" style="font-size:22px">${fmt(dayTotals(today()).kcal)} <span class="small muted">/ ${fmt(targets().kcal)} kcal</span></div><div class="bar" style="margin-top:6px"><i style="width:${Math.min(100,dayTotals(today()).kcal/(targets().kcal||1)*100)}%;background:var(--kcal)"></i></div></div>${svgI.chev}</a>
+ ${recoveryCard()}
  <div class="card stack"><div class="row"><h3 class="grow">Leistungsentwicklung</h3>${st.trend!=null?`<span class="trend ${st.trend<0?"down":""}">${st.trend>0?"+":""}${st.trend} %</span>`:""}</div>
   ${st.months.some(m=>m.v>0)?`<div class="chart">${monthBars(st.months)}</div><div class="small muted">Trainingsvolumen (Gewicht × Wiederholungen) pro Monat${st.trend!=null?`. Prozent: bis heute im Vergleich zu denselben Tagen im Vormonat`:""}.</div>`:`<div class="empty small">Nach deinen ersten Trainings siehst du hier dein Volumen pro Monat.</div>`}</div>
  </div>`;

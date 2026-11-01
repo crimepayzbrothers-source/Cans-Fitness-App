@@ -624,6 +624,41 @@ function warmupSets(ex, work, opt) {
   return out;
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets};
+/* ---------- Erholung je Muskel (Schätzung) ----------
+   Jeder harte Satz erzeugt Ermüdung im Zielmuskel (Hilfsmuskeln anteilig), die über die Erholungszeit linear abklingt:
+   große Muskeln ca. 72 h, mittlere 60 h, kleine 48 h. Nahe am Versagen (RIR 0–1) zählt ein Satz etwas mehr, mit viel
+   Reserve (RIR 4+) weniger. 8 frische, harte Sätze = 0 % erholt. Das ist ein Richtwert, keine Messung. */
+const REC_H = {quads: 72, hams: 72, glutes: 72, back: 72, chest: 72, lowback: 72, front: 60, side: 60, rear: 60, traps: 60, adductors: 60,
+  biceps: 48, triceps: 48, calves: 48, abs: 48, forearms: 48, tibialis: 48};
+const REC_CAP = 8;
+function recovery(workouts, now) {
+  now = now || Date.now();
+  const F = {};
+  (workouts || []).forEach(w => {
+    const t = w.end || w.start || (w.date ? new Date(w.date + "T18:00:00").getTime() : 0);
+    const h = (now - t) / 3600000;
+    if (!(h >= 0) || h > 96) return;
+    (w.exercises || []).forEach(e => {
+      const ex = EXMAP[e.ex]; if (!ex || isCardio(ex.id)) return;
+      const hard = (e.sets || []).filter(s => s.done !== false && (s.reps || 0) > 0 && s.type !== "warm");
+      hard.forEach(s => {
+        const f = s.rir == null ? 1 : s.rir <= 1 ? 1.15 : s.rir >= 4 ? 0.7 : 1;
+        const add = (m, k) => { const T = REC_H[m] || 60; if (h < T) F[m] = (F[m] || 0) + f * k * (1 - h / T); };
+        add(ex.m, 1); Object.entries(ex.s || {}).forEach(([m, k]) => add(m, k));
+      });
+    });
+  });
+  const out = {};
+  Object.keys(REC_H).forEach(m => out[m] = Math.round(100 * (1 - Math.min(1, (F[m] || 0) / REC_CAP))));
+  return out;
+}
+/* Stunden bis ein Muskel wieder >= 90 % erholt ist (grob, für Hinweise) */
+function hoursToFresh(workouts, m, now) {
+  now = now || Date.now();
+  for (let h = 0; h <= 96; h += 6) if (recovery(workouts, now + h * 3600000)[m] >= 90) return h;
+  return 96;
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
