@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Cans Fitness App</title>
 <meta name="theme-color" content="#060A16">
+<script>/* Design vor dem ersten Zeichnen setzen (kein Aufblitzen) */(function(){var t="dark";try{t=localStorage.getItem("et-theme")||"dark"}catch(e){}if(t==="auto")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.setAttribute("data-theme",t);var m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==="light"?"#F2F5FA":"#060A16"})()</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Cans Fitness">
@@ -422,6 +423,31 @@ svg.big{height:260px;width:auto}
 .kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:15px}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- Helles Design ----------
+   Gleiche Struktur, eigene Farbwerte. Bühnenflächen für Figuren und 3D (.exanim, .exhero, .thumb) bleiben dunkel,
+   weil Figuren und Muskel-Leuchten dafür gezeichnet sind. */
+:root[data-theme="light"]{
+  --bg:#F2F5FA; --bg2:#E8EDF6; --surface:#FFFFFF; --surface2:#EDF1F8; --ink:#0E1A33; --muted:#53627F; --line:#D5DDEA;
+  --accent:#1F6BFF; --accent2:#1557D0; --kcal:#C93636; --p:#2F6FE0; --c:#9A6C00; --f:#0B7F53; --warn:#A35C00;
+  --edge:rgba(31,107,255,.16); --shadow:0 1px 2px rgba(15,30,60,.06),0 6px 18px rgba(15,30,60,.07); --glow:0 4px 14px rgba(31,107,255,.28);
+  color-scheme:light;
+}
+[data-theme="light"] body{background:radial-gradient(120% 60% at 50% -10%,rgba(47,140,255,.10),transparent 60%),var(--bg)}
+[data-theme="light"] body::before{background:var(--bg)}
+[data-theme="light"] header.top{background:rgba(242,245,250,.92)}
+[data-theme="light"] .card,[data-theme="light"] .eq,[data-theme="light"] .banner,[data-theme="light"] .dayrow,[data-theme="light"] .exrow2{background:var(--surface);box-shadow:var(--shadow)}
+[data-theme="light"] .hero{background:radial-gradient(70% 90% at 85% 40%,rgba(47,140,255,.14),transparent 70%),var(--surface)}
+[data-theme="light"] .btn.ghost{background:var(--surface)}
+[data-theme="light"] .btn.glow{background:var(--surface);color:var(--accent);box-shadow:var(--glow)}
+[data-theme="light"] .bar,[data-theme="light"] .fbars i,[data-theme="light"] .cd{background:rgba(14,26,51,.07)}
+[data-theme="light"] .fbars i.on{background:linear-gradient(180deg,#4A9BFF,#1F5FE0);box-shadow:none}
+[data-theme="light"] .status,[data-theme="light"] .hint,[data-theme="light"] .warm{background:var(--surface2)}
+[data-theme="light"] #sheetwrap{background:rgba(14,26,51,.35)}
+[data-theme="light"] #sheet{background:var(--surface)}
+[data-theme="light"] nav.tabs{background:rgba(255,255,255,.95)}
+[data-theme="light"] input[type=text],[data-theme="light"] input[type=number],[data-theme="light"] input[type=search],[data-theme="light"] input[type=password],[data-theme="light"] select,[data-theme="light"] textarea{background:var(--surface);border-color:var(--line)}
+[data-theme="light"] .chip.on,[data-theme="light"] .cd.done{box-shadow:none}
 </style>
 
 </head>
@@ -756,6 +782,10 @@ function lastSets(exId,excludeId){return exHistory(exId,excludeId)[0]||null}
 function daysSinceLast(){const ws=Object.values(WORKOUTS);if(!ws.length)return 0;return(Date.now()-Math.max(...ws.map(w=>w.start)))/864e5}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
 
+/* ---------- Design: dunkel, hell oder wie das System ---------- */
+function themePref(){try{return localStorage.getItem("et-theme")||"dark"}catch(e){return"dark"}}
+function applyTheme(){const p=themePref(),t=p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):p;document.documentElement.setAttribute("data-theme",t);const m=document.querySelector('meta[name=theme-color]');if(m)m.content=t==="light"?"#F2F5FA":"#060A16"}
+try{matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if(themePref()==="auto")applyTheme()})}catch(e){}
 /* ---------- Aufwärmsätze & Scheibenrechner ---------- */
 function plateCfg(){const c=M.plates||{};return{bb:+c.bb||20,ez:+c.ez||10,have:Array.isArray(c.have)&&c.have.length?c.have.map(Number):PL.PLATES.slice()}}
 function barKg(ex){const t=PL.barFor(ex);if(!t)return 0;const c=plateCfg();return t==="ez"?c.ez:c.bb}
@@ -2013,7 +2043,8 @@ function vProfile(){
   ${item(ic('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),"KI-Foto-Analyse",'data-act="aiSettings"')}
   ${item(ic('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>'),"Timer &amp; Tools (1RM-Rechner)",'data-act="tools"')}
   ${item(ic('<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>'),"Datensicherung",'data-act="profile"')}
- </div></div>`;
+ </div>
+ <div class="card stack"><div class="lbl">Darstellung</div>${segBar(themePref(),[["dark","Dunkel"],["light","Hell"],["auto","Wie System"]],"theme")}</div></div>`;
 }
 function toolsSheet(){
  SH={tools:1};
@@ -2176,6 +2207,7 @@ document.addEventListener("click",e=>{
  case"addWEx":exPicker(id=>{M.active.exercises.push(newExEntry(id,null));persist("main");closeSheet();render()},"Übung hinzufügen");break;
  case"addSet":{const ex=M.active.exercises[+d.ei];const last=ex.sets[ex.sets.length-1];ex.sets.push({kg:last?last.kg:null,reps:null,rir:null,done:false});persist("main");render();break}
  case"openReport":UI.statTab="report";UI.repW=-1;location.hash="verlauf";break;
+ case"theme":try{localStorage.setItem("et-theme",d.t)}catch(e){}applyTheme();render();break;
  case"repW":{UI.repW=Math.min(0,+d.n);render();break}
  case"plates":{const e=M.active&&M.active.exercises[+d.ei];if(e)plateSheet(e.ex,workKg(e));break}
  case"plBar":{M.plates=Object.assign(plateCfg(),{[d.t]:+d.v});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
