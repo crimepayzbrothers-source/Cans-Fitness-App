@@ -67,6 +67,11 @@ const exThumb=(ex,tap)=>`<div class="thumb${tap?" tap":""}"${tap?tapAttr(ex):""}
 const exMini=(ex,tap)=>`<div class="thumb sm${tap?" tap":""}"${tap?tapAttr(ex):""}>${exFig(ex)}</div>`;
 
 /* ---------- 1 Startbildschirm ---------- */
+/* Erinnerung an die Sicherung: Daten liegen nur auf diesem Gerät */
+function backupDue(){const ws=Object.values(WORKOUTS);if(!ws.length)return null;let later=0;try{later=+localStorage.getItem("et-bklater")||0}catch(e){}if(Date.now()-later<7*864e5)return null;
+ const last=M.lastBackup?Date.parse(M.lastBackup):0;const fresh=ws.filter(w=>(w.end||w.start)>last).length;
+ if(!last)return ws.length>=3?{days:null,fresh}:null;const days=Math.floor((Date.now()-last)/864e5);return days>=14&&fresh>0?{days,fresh}:null}
+function backupBanner(){const b=backupDue();if(!b)return"";return`<div class="banner"><div class="grow small"><b>${b.days==null?"Noch keine Sicherung.":`Letzte Sicherung vor ${b.days} Tagen.`}</b> ${b.fresh} ${b.fresh===1?"Training ist":"Trainings sind"} nur auf diesem Gerät gespeichert.</div><button class="btn sm primary" data-act="exportData">Sichern</button><button class="btn sm ghost" data-act="bkLater" aria-label="Später erinnern">Später</button></div>`}
 function vHome(){
  const st=homeStats(),P=M.plan,h=new Date().getHours();
  const hi=h<11?"Guten Morgen":h<18?"Hallo":"Guten Abend";
@@ -86,6 +91,7 @@ function vHome(){
  return`<div class="section">
  <div class="greet"><div class="grow"><div class="hi">${hi}</div><div class="nm">${esc(name)} <span aria-hidden="true">👋</span></div><div class="small muted">Bereit, stärker zu werden?</div></div></div>
  ${UI.storeFull?`<div class="banner warn" role="alert"><div class="grow"><b>Speicher voll.</b> Neue Einträge konnten nicht gespeichert werden. Exportiere jetzt eine Sicherung und lösche alte Ernährungstage.</div><button class="btn sm primary" data-act="exportData">Sichern</button></div>`:""}
+ ${backupBanner()}
  <div class="dash">
   <div class="card wring"><div class="rw">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>${pct>0?`<circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" ${g.f}/>`:""}</svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><div class="big">${st.done}<span> / ${st.goal}</span></div><div class="small muted">Einheiten</div></div></div></div>
   <div class="tiles">${tile(fire,st.streak,st.streak===1?"Woche in Folge":"Wochen in Folge")}${tile(barsI,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}${tile(cupI,st.pbs,"Bestleistungen (30 Tage)")}</div>

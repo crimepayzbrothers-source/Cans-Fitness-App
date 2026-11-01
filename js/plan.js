@@ -177,7 +177,7 @@ function profileSheet(){
  <div class="grid2"><label class="f">Zielgewicht (kg)<input type="number" inputmode="decimal" id="prGoalW" value="${p.goalWeight??""}" placeholder="optional"></label><label class="f">Wasserziel (Liter)<input type="number" inputmode="decimal" step="0.25" id="prWater" value="${(M.settings.water||3000)/1000}"></label></div>
  <label class="f">Pausentimer (Sekunden)<input type="number" id="prRest" value="${M.settings.rest||90}"></label>
  <button class="btn primary block" data-act="saveProfile">Speichern</button>
- <div class="card stack"><b>Datensicherung</b><div class="small muted">Deine Daten liegen nur auf diesem Gerät. Exportiere ab und zu eine Sicherung, z. B. in deine Cloud – damit kannst du alles auf ein neues Handy übertragen.</div><div class="row"><button class="btn grow" data-act="exportData">Sicherung exportieren</button><button class="btn ghost grow" data-act="importData">Importieren</button></div></div></div>`,SH);
+ <div class="card stack"><b>Datensicherung</b><div class="small muted">Deine Daten liegen nur auf diesem Gerät. ${M.lastBackup?`Letzte Sicherung: ${new Date(M.lastBackup).toLocaleDateString("de-DE")}.`:"Noch keine Sicherung."}</div><div class="small muted"><b>Zweites Gerät:</b> Hier „Exportieren“ und die Datei per Teilen-Menü (AirDrop, Nachricht, Dateien) schicken. Auf dem anderen Gerät „Importieren“ und „Zusammenführen“ wählen. So bleiben beide Geräte auf dem gleichen Stand, ohne Cloud-Konto.</div><div class="row"><button class="btn grow" data-act="exportData">Sicherung exportieren</button><button class="btn ghost grow" data-act="importData">Importieren</button></div></div></div>`,SH);
 }
 
 /* ================= Vorlage „Futuristic Performance“: Ansichten ================= */
