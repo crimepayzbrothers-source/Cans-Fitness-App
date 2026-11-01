@@ -10,7 +10,10 @@ const fmt=(n,d=0)=>Number(n||0).toLocaleString("de-DE",{maximumFractionDigits:d,
 const num=v=>{if(v===""||v==null)return null;const x=parseFloat(String(v).replace(",","."));return isFinite(x)?x:null};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+function toast(msg){const t=$("#toast");UNDO=null;t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2600)}
+/* Hinweis mit „Rückgängig“-Knopf (8 s) */
+let UNDO=null;
+function toastUndo(msg,fn){const t=$("#toast");t.innerHTML=`<span>${esc(msg)}</span><button class="undo" data-act="undo">Rückgängig</button>`;t.hidden=false;UNDO=fn;clearTimeout(toast._t);toast._t=setTimeout(()=>{t.hidden=true;UNDO=null},8000)}
 function dayLabel(d){const t=today();const y=isoDate(new Date(Date.now()-864e5));if(d===t)return"Heute";if(d===y)return"Gestern";const dt=new Date(d+"T12:00:00");return dt.toLocaleDateString("de-DE",{weekday:"short",day:"numeric",month:"short"})}
 function shiftDate(d,n){const dt=new Date(d+"T12:00:00");dt.setDate(dt.getDate()+n);return isoDate(dt)}
 

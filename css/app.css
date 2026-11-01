@@ -438,3 +438,8 @@ svg.big{height:260px;width:auto}
 [data-theme="light"] nav.tabs{background:rgba(255,255,255,.95)}
 [data-theme="light"] input[type=text],[data-theme="light"] input[type=number],[data-theme="light"] input[type=search],[data-theme="light"] input[type=password],[data-theme="light"] select,[data-theme="light"] textarea{background:var(--surface);border-color:var(--line)}
 [data-theme="light"] .chip.on,[data-theme="light"] .cd.done{box-shadow:none}
+
+.wcard{display:block;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer}
+#toast{display:flex;align-items:center;gap:12px}
+#toast[hidden]{display:none}
+#toast .undo{background:none;border:0;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:4px 0;cursor:pointer;white-space:nowrap}
