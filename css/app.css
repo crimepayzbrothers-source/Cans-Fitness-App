@@ -443,3 +443,5 @@ svg.big{height:260px;width:auto}
 #toast{display:flex;align-items:center;gap:12px}
 #toast[hidden]{display:none}
 #toast .undo{background:none;border:0;color:inherit;font:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;padding:4px 0;cursor:pointer;white-space:nowrap}
+button.cd{border:0;cursor:pointer;padding:0;font-family:var(--display);font-weight:600;font-size:14px}
+.wcard.row{display:flex;align-items:center;gap:10px}

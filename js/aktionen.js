@@ -51,6 +51,7 @@ document.addEventListener("click",e=>{
  case"exportData":exportData();break;
  case"wDetail":wDetailSheet(d.id);break;
  case"wAll":wAllSheet();break;
+ case"calDay":{const l=Object.values(WORKOUTS).filter(w=>w.date===d.day).sort((a,b)=>b.start-a.start);if(l.length===1)wDetailSheet(l[0].id);else if(l.length){SH={};openSheet(`${sheetHd(new Date(d.day+"T12:00:00").toLocaleDateString("de-DE",{weekday:"long",day:"numeric",month:"long"}))}<div class="stack">${l.map(wCard).join("")}</div>`,SH)}break}
  case"wDel":{const w=WORKOUTS[d.id];if(!w)break;openConfirm(`Training „${w.dayName||"Training"}“ vom ${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE")} löschen?`,"Löschen",()=>deleteWorkout(d.id));break}
  case"undo":{const f=UNDO;UNDO=null;$("#toast").hidden=true;if(f)f();break}
  case"impMerge":if(SH&&SH.imp)importMerge(SH.imp);break;
