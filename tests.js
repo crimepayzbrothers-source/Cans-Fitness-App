@@ -113,5 +113,9 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
   const hard = P.recovery([w(0, 4, 0)], now).chest, easy = P.recovery([w(0, 4, 4)], now).chest, warm = P.recovery([{end: now, exercises: [{ex: "bench", sets: [{kg: 40, reps: 8, type: "warm"}]}]}], now).chest;
   const ok = Object.values(r0).every(v => v === 100) && b < a && a < c && d === 100 && hard < easy && warm === 100 && P.recovery([w(0, 4, 2)], now).triceps > a;
   console.log("Erholung:", ok ? `ok (4 Sätze: ${a} %, 8 Sätze: ${b} %, nach 24 h: ${c} %)` : "FEHLER"); if (!ok) fails++; }
+// Sätze je Muskel aus Trainings: Hauptmuskel voll, Hilfsmuskel anteilig, Aufwärmsätze nicht
+{ const v = P.setsByMuscle([{exercises: [{ex: "bench", sets: [{kg: 60, reps: 8}, {kg: 60, reps: 8}, {kg: 20, reps: 10, type: "warm"}, {kg: 60, reps: 0}]}]}]);
+  const ok = v.chest === 2 && v.triceps === 1 && v.front === 1 && v.back === 0;
+  console.log("Sätze je Muskel:", ok ? "ok" : "FEHLER " + JSON.stringify(v)); if (!ok) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 
