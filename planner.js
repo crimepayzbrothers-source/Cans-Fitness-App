@@ -533,8 +533,10 @@ function num(v) { return (Math.round(v * 10) / 10).toString().replace(".", ",");
    feel: "leicht" | "passt" | "hart"; workout: {exercises:[{ex, sets:[{kg,reps,rir}]}]}
    prevBest(exId): bestes e1RM der vorigen Einheit dieser Übung oder null
    Ändert nur Satzzahlen der heute trainierten Plan-Übungen, nie die Übungsauswahl. */
-function adapt(plan, dayIdx, workout, feel, prevBest, weekKey) {
-  const out = [];
+/* opt.mfb: Rückmeldung je Muskel (+1 = mehr ging, 0 = passend, −1 = zu viel oder Muskelkater bis heute); sie hat Vorrang vor dem
+   Gesamtgefühl. opt.rec: geschätzte Erholung je Muskel VOR dieser Einheit; war ein Muskel noch nicht erholt, gibt es keinen Satz mehr. */
+function adapt(plan, dayIdx, workout, feel, prevBest, weekKey, opt) {
+  const out = [], mfb = (opt && opt.mfb) || {}, rec = (opt && opt.rec) || {};
   if (!plan || !plan.days || !plan.days[dayIdx]) return out;
   plan.adapted = plan.adapted || {};
   const day = plan.days[dayIdx];
@@ -558,13 +560,16 @@ function adapt(plan, dayIdx, workout, feel, prevBest, weekKey) {
     if (plan.adapted[k]) continue;
     const items = day.items.filter(it => it.m === m || (EXMAP[it.ex] || {}).m === m);
     if (!items.length) continue;
-    if (feel === "leicht" && easy && !declining) {
+    const explicit = mfb[m] != null;
+    const r = explicit ? mfb[m] : feel === "leicht" ? 1 : feel === "hart" ? -1 : 0;
+    if (r > 0 && !declining && (explicit || easy)) {
+      if (rec[m] != null && rec[m] < 70) { out.push(`${MUSN[m]}: kein Satz mehr, war vor dem Training erst zu ${rec[m]} % erholt`); continue; }
       const cap = Math.round((T[m] || 10) * 1.5);
       const it = items.slice().sort((a, b) => a.sets - b.sets)[0];
-      if (vol[m] + 1 <= cap && it.sets < 5) { it.sets++; plan.adapted[k] = 1; out.push(`${MUSN[m]}: +1 Satz bei ${EXMAP[it.ex].n} (Training war leicht)`); }
-    } else if (feel === "hart" || declining) {
+      if (vol[m] + 1 <= cap && it.sets < 5) { it.sets++; plan.adapted[k] = 1; out.push(`${MUSN[m]}: +1 Satz bei ${EXMAP[it.ex].n} (${explicit ? "deine Rückmeldung: mehr ging" : "Training war leicht"})`); }
+    } else if (r < 0 || declining) {
       const it = items.slice().sort((a, b) => b.sets - a.sets)[0];
-      if (it.sets > 2) { it.sets--; plan.adapted[k] = 1; out.push(`${MUSN[m]}: −1 Satz bei ${EXMAP[it.ex].n} (${declining ? "Leistung gesunken" : "Training war hart"})`); }
+      if (it.sets > 2) { it.sets--; plan.adapted[k] = 1; out.push(`${MUSN[m]}: −1 Satz bei ${EXMAP[it.ex].n} (${declining ? "Leistung gesunken" : explicit ? "deine Rückmeldung: zu viel oder Muskelkater" : "Training war hart"})`); }
     }
   }
   // Ermüdung über mehrere Einheiten: Deload vorschlagen

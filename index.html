@@ -162,6 +162,9 @@ nav.tabs a.on{color:var(--accent)}
 .reportteaser{width:100%;border:0;color:inherit;font:inherit;cursor:pointer}
 .mrow .mn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mrow .mv{text-align:right}
+.mfb{display:flex;flex-direction:column;gap:8px}
+.mfbrow{display:flex;flex-direction:column;gap:4px}
+.mfbrow>span{font-weight:600;font-size:14px}
 .mb{position:relative;height:10px;background:var(--surface2);border-radius:6px}
 .mb i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
 .mb b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.7}
@@ -477,7 +480,7 @@ svg.big{height:260px;width:auto}
 <input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
-<script src="planner.js?v=25"></script>
+<script src="planner.js?v=26"></script>
 <script src="ai.js?v=23"></script>
 <script src="figure.js?v=23"></script>
 <script src="geraete.js?v=2"></script>
@@ -1885,7 +1888,7 @@ function saveWorkingWeights(w){
  return n;
 }
 function summarySheet(w){
- SH={fb:w,pain:[],feel:null,mood:null};
+ SH={fb:w,pain:[],feel:null,mood:null,mfb:{}};
  const planned=M.plan&&w.planDay!=null&&M.plan.id===w.planId&&M.plan.days[w.planDay]?M.plan.days[w.planDay].items.length:w.exercises.length;
  const sets=w.exercises.reduce((s,e)=>s+e.sets.length,0),dur=Math.min(4*3600,Math.max(60,Math.round(((w.end||(w.start+3600e3))-w.start)/1000)));
  const kcal=Math.round(5*(+M.profile.weight||80)*dur/3600);
@@ -1897,6 +1900,7 @@ function summarySheet(w){
  openSheet(`<div class="stack"><div class="donehero">${bodySvg(new Set(w.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)),null,"fig done")}<h1>Training abgeschlossen!</h1><div class="muted">Starke Leistung, ${esc((M.profile&&M.profile.name)||"Can")}!</div></div>
  <div class="tiles3">${tile(`${w.exercises.length}/${planned}`,"Übungen")}${tile(sets,"Sätze")}${tile(fmt(volume(w))+" kg","Gesamtvolumen")}${tile(restTxtClock(Math.floor(dur/60))+"",`Dauer (h:min)`)}${tile("≈ "+kcal+" kcal","verbraucht")}${tile(inten,"Intensität")}</div>
  ${adaptive?`<div class="lbl">Wie anstrengend war es?</div><div class="chips">${[["leicht","Zu leicht"],["passt","Genau richtig"],["hart","Zu hart"]].map(([k,l])=>`<button class="chip" data-act="sFeel" data-v="${k}">${l}</button>`).join("")}</div><div class="small muted">Steuert die Satzzahl dieser Einheit in den nächsten Wochen.</div>`:""}
+ ${adaptive?(ms=>ms.length?`<div class="lbl">Je Muskel (optional, genauer)</div><div class="mfb">${ms.map(m=>`<div class="mfbrow"><span>${PL.MUSN[m]}</span><div class="chips">${[[1,"Mehr ging"],[0,"Passend"],[-1,"Zu viel / Muskelkater"]].map(([v,l])=>`<button class="chip" data-act="mFb" data-m="${m}" data-v="${v}">${l}</button>`).join("")}</div></div>`).join("")}</div><div class="small muted">„Zu viel / Muskelkater“: Die Einheit war zu viel oder der Muskelkater vom letzten Mal hielt bis heute an. Pro Muskel ändert sich höchstens 1 Satz pro Woche.</div>`:"")([...new Set(w.exercises.map(e=>EXMAP[e.ex]&&!PL.isCardio(e.ex)?EXMAP[e.ex].m:null).filter(Boolean))].slice(0,6)):""}
  <div class="lbl">Wie war dein Training?</div><div class="moods">${MOODS.map((m,i)=>`<button class="mood" data-act="sMood" data-v="${i+1}" aria-label="Stimmung ${i+1} von 5">${m}</button>`).join("")}</div>
  ${adaptive?`<div class="lbl">Gelenkbeschwerden? (optional)</div><div class="chips">${w.exercises.map(e=>`<button class="chip" data-act="fbPain" data-id="${e.ex}">${esc(EXMAP[e.ex]?EXMAP[e.ex].n:e.ex)}</button>`).join("")}</div>`:""}
  <textarea id="sNote" placeholder="Notiz hinzufügen …"></textarea>
@@ -1905,10 +1909,13 @@ function summarySheet(w){
 }
 function applySummary(){
  const w=SH.fb,P=M.plan;let changes=[];const feel=SH.feel;
- if(feel&&P&&P.id===w.planId&&w.planDay!=null&&!w.deload){
+ const mfb=SH.mfb||{};
+ if((feel||Object.keys(mfb).length)&&P&&P.id===w.planId&&w.planDay!=null&&!w.deload){
   const prevBest=id=>{const h=exHistory(id,w.id)[0];return h?Math.max(...h.sets.map(PL.e1rm)):null};
-  changes=PL.adapt(P,w.planDay,w,feel,prevBest,isoWeekKey());
+  const rec=PL.recovery(Object.values(WORKOUTS).filter(x=>x.id!==w.id),w.start);
+  changes=PL.adapt(P,w.planDay,w,feel,prevBest,isoWeekKey(),{mfb,rec});
  }
+ if(Object.keys(mfb).length)w.mfb=mfb;
  if(P&&SH.pain.length){P.days.forEach(d=>d.items.forEach(it=>{if(SH.pain.includes(it.ex))it.pain=true}));changes.push(`Beschwerden gemeldet: ${SH.pain.map(id=>EXMAP[id].n).join(", ")}`)}
  if(P&&changes.length){P.log=P.log||[];changes.forEach(t=>P.log.unshift({d:today(),t}));if(P.suggestDeload)P.log.unshift({d:today(),t:"Mehrere harte Einheiten: Deload-Woche vorgeschlagen"});P.log=P.log.slice(0,40);persist("main")}
  w.feel=feel||w.feel||null;w.mood=SH.mood||null;const n=($("#sNote")||{}).value;if(n)w.note=n.trim().slice(0,500);
@@ -2172,6 +2179,7 @@ document.addEventListener("click",e=>{
  case"fSave":{const p=SH.focus,e=M.active.exercises[p.ei],s=e.sets[p.si];s.kg=num($("#fKg").value);s.reps=num($("#fReps").value);if(!s.reps){toast("Bitte Wiederholungen eintragen.");break}s.done=true;
   const nx=e.sets[p.si+1];if(nx&&nx.kg==null&&s.kg!=null)nx.kg=s.kg;persist("main");startRest((e.target&&e.target.rest)||M.settings.rest||90);render();
   const n=nextOpenSet();if(n){if(n.ei===p.ei&&e.sets[n.si].kg==null)e.sets[n.si].kg=s.kg;focusSheet(n.ei,n.si);toast(`Satz gespeichert: ${fmt(s.kg,1)} kg × ${s.reps}`)}else{closeSheet();toast("Alle Sätze erledigt. Tippe auf Fertig.")}break}
+ case"mFb":{const m=d.m,v=+d.v;if(SH.mfb[m]===v){delete SH.mfb[m];b.classList.remove("on")}else{SH.mfb[m]=v;b.parentElement.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b))}break}
  case"sFeel":SH.feel=d.v;b.parentElement.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c===b));break;
  case"sMood":SH.mood=+d.v;document.querySelectorAll(".mood").forEach(c=>c.classList.toggle("on",c===b));break;
  case"sDone":applySummary();break;
