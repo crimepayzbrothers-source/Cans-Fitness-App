@@ -7,6 +7,8 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const isoDate=d=>{const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)};
 const today=()=>isoDate(new Date());
 const fmt=(n,d=0)=>Number(n||0).toLocaleString("de-DE",{maximumFractionDigits:d,minimumFractionDigits:0});
+/* Zahl für ein Eingabefeld mit deutschem Komma (72.5 → "72,5") */
+const inNum=v=>v==null||v===""?"":String(v).replace(".",",");
 const num=v=>{if(v===""||v==null)return null;const x=parseFloat(String(v).replace(",","."));return isFinite(x)?x:null};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);

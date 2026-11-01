@@ -91,7 +91,7 @@ function itemSheet(di,ii){
  ${ex?`<button class="card row" data-act="exInfoItem" data-id="${ex.id}" style="text-align:left;width:100%;color:inherit">${exThumb(ex)}<div class="grow"><b>Anleitung &amp; Animation</b><div class="small muted">Ausführung, häufige Fehler, Atmung</div></div>${svgI.chev}</button>`:""}
  ${it.pain?`<div class="banner warn"><div class="grow">Du hast hier Beschwerden gemeldet. Unten findest du gelenkschonendere Alternativen.</div><button class="btn sm" data-act="painOff">Erledigt</button></div>`:""}
  <div class="card stack">${st("sets","Sätze")}${st("repMin","Wdh. min")}${st("repMax","Wdh. max")}${st("rir","Ziel-RIR")}${st("rest","Pause",restTxt)}
-  <label class="f">Arbeitsgewicht in kg (optional)<input type="number" inputmode="decimal" step="0.5" id="itKg" value="${it.kg??""}" placeholder="wird aus deinem Verlauf vorgeschlagen"></label></div>
+  <label class="f">Arbeitsgewicht in kg (optional)<input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="itKg" value="${it.kg??""}" placeholder="wird aus deinem Verlauf vorgeschlagen"></label></div>
  <div class="row"><button class="btn ghost grow" data-act="fav">${fav?"★ Bevorzugt":"☆ Bevorzugen"}</button><button class="btn ghost grow" data-act="exclude">Nie mehr vorschlagen</button></div>
  ${alts.length?`<div class="lbl">Tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="swap" data-id="${a.id}">${exMini(a)}<div class="n"><div>${esc(a.n)}</div><div class="small muted">${a.pat===ex.pat?"gleiches Bewegungsmuster":"anderes Bewegungsmuster"}${(M.prefs.fav||[]).includes(a.id)?" · bevorzugt":""}</div></div><span class="muted">›</span></button>`).join("")}</div>`:`<div class="small muted">Für diesen Muskel gibt es mit deinen Geräten keine Alternative.</div>`}
  <div class="row"><button class="btn ghost grow" data-act="mv" data-n="-1">↑ Nach oben</button><button class="btn ghost grow" data-act="mv" data-n="1">↓ Nach unten</button></div>
@@ -122,7 +122,9 @@ function startWorkout(di){
  persist("main");keepAwake();if(location.hash!=="#training")location.hash="#training";else render();
 }
 function finishWorkout(){
- const A=M.active;const exercises=A.exercises.map(e=>({ex:e.ex,target:e.target,sets:e.sets.filter(s=>s.done||(s.reps!=null&&s.reps!=="")).map(s=>({kg:num(s.kg)||0,reps:num(s.reps)||0,rir:s.rir}))})).filter(e=>e.sets.length);
+ const A=M.active;/* Satztyp und Supersatz mitspeichern (sonst zählen Aufwärmsätze nach dem Speichern als Arbeitssätze).
+    Aufwärmsätze nur, wenn abgehakt; Arbeitssätze wie bisher, wenn abgehakt oder Wiederholungen eingetragen. */
+ const exercises=A.exercises.map(e=>{const o={ex:e.ex,target:e.target,sets:e.sets.filter(s=>s.type==="warm"?s.done:(s.done||(s.reps!=null&&s.reps!==""))).map(s=>{const x={kg:num(s.kg)||0,reps:num(s.reps)||0,rir:s.rir};if(s.type)x.type=s.type;return x})};if(e.ss)o.ss=e.ss;return o}).filter(e=>e.sets.length);
  if(!exercises.length){openConfirm("Noch kein Satz eingetragen. Training trotzdem beenden?","Beenden ohne Speichern",()=>{M.active=null;persist("main");stopRest();render()});return}
  const w={id:A.id,date:A.date,start:A.start,end:Date.now(),dayName:A.dayName,planDay:A.planDay,planId:A.planId,deload:!!A.deload,exercises};WORKOUTS[A.id]=w;M.active=null;saveWorkingWeights(w);persist("workouts/"+A.id,true);persist("main",true);stopRest();
  try{wakeLock&&wakeLock.release()}catch(e){}
@@ -167,14 +169,14 @@ function profileSheet(){
  openSheet(`${sheetHd("Profil & Ziele")}<div class="stack">
  <label class="f">Name<input type="text" id="prName" value="${esc(p.name||"")}" placeholder="z. B. Can"></label>
  <div class="grid2"><label class="f">Geschlecht<select id="prSex"><option value="m" ${p.sex==="m"?"selected":""}>männlich</option><option value="w" ${p.sex==="w"?"selected":""}>weiblich</option></select></label><label class="f">Alter<input type="number" id="prAge" value="${p.age}"></label>
- <label class="f">Größe (cm)<input type="number" id="prH" value="${p.height}"></label><label class="f">Gewicht (kg)<input type="number" inputmode="decimal" id="prW" value="${p.weight}"></label></div>
+ <label class="f">Größe (cm)<input type="number" id="prH" value="${p.height}"></label><label class="f">Gewicht (kg)<input type="text" inputmode="decimal" autocomplete="off" id="prW" value="${p.weight}"></label></div>
  <label class="f">Alltag + Training<select id="prAct">${[[1.3,"wenig Bewegung, 2–3× Training"],[1.45,"Bürojob, 3–4× Training"],[1.55,"aktiv, 4–5× Training"],[1.7,"sehr aktiv, körperliche Arbeit"]].map(([v,l])=>`<option value="${v}" ${+p.activity===v?"selected":""}>${l}</option>`).join("")}</select></label>
  <label class="f">Ziel<select id="prGoal"><option value="ab" ${p.goal==="ab"?"selected":""}>Fett verlieren</option><option value="halten" ${p.goal==="halten"?"selected":""}>Gewicht halten</option><option value="aufbau" ${p.goal==="aufbau"?"selected":""}>Muskeln aufbauen</option></select></label>
  <button class="btn block" data-act="suggest">Ziele aus diesen Angaben berechnen</button>
  <div class="lbl">Tagesziele</div>
  <div class="grid4"><label class="f">kcal<input type="number" id="tK" value="${T.kcal}"></label><label class="f">Eiweiß g<input type="number" id="tP" value="${T.p}"></label><label class="f">KH g<input type="number" id="tC" value="${T.c}"></label><label class="f">Fett g<input type="number" id="tF" value="${T.f}"></label></div>
  <div class="small muted">Berechnet mit der Mifflin-St-Jeor-Formel, Eiweiß ${p.goal==="ab"?"2,2":"2,0"} g pro kg. Vorschlag aktuell: ${fmt(s.kcal)} kcal.</div>
- <div class="grid2"><label class="f">Zielgewicht (kg)<input type="number" inputmode="decimal" id="prGoalW" value="${p.goalWeight??""}" placeholder="optional"></label><label class="f">Wasserziel (Liter)<input type="number" inputmode="decimal" step="0.25" id="prWater" value="${(M.settings.water||3000)/1000}"></label></div>
+ <div class="grid2"><label class="f">Zielgewicht (kg)<input type="text" inputmode="decimal" autocomplete="off" id="prGoalW" value="${p.goalWeight??""}" placeholder="optional"></label><label class="f">Wasserziel (Liter)<input type="text" inputmode="decimal" autocomplete="off" step="0.25" id="prWater" value="${(M.settings.water||3000)/1000}"></label></div>
  <label class="f">Pausentimer (Sekunden)<input type="number" id="prRest" value="${M.settings.rest||90}"></label>
  <button class="btn primary block" data-act="saveProfile">Speichern</button>
  <div class="card stack"><b>Datensicherung</b><div class="small muted">Deine Daten liegen nur auf diesem Gerät. ${M.lastBackup?`Letzte Sicherung: ${new Date(M.lastBackup).toLocaleDateString("de-DE")}.`:"Noch keine Sicherung."}</div><div class="small muted"><b>Zweites Gerät:</b> Hier „Exportieren“ und die Datei per Teilen-Menü (AirDrop, Nachricht, Dateien) schicken. Auf dem anderen Gerät „Importieren“ und „Zusammenführen“ wählen. So bleiben beide Geräte auf dem gleichen Stand, ohne Cloud-Konto.</div><div class="row"><button class="btn grow" data-act="exportData">Sicherung exportieren</button><button class="btn ghost grow" data-act="importData">Importieren</button></div></div></div>`,SH);

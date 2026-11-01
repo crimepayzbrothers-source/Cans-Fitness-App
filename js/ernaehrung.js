@@ -41,8 +41,8 @@ function productForm(p){
  <label class="f">Name<input type="text" id="pName" value="${esc(v("name"))}" placeholder="z. B. Protein-Pudding Schoko"></label>
  <div class="grid2"><label class="f">Marke<input type="text" id="pBrand" value="${esc(v("brand"))}"></label><label class="f">Barcode<input type="text" inputmode="numeric" id="pCode" value="${esc(v("code"))}"></label></div>
  <div class="lbl">Je 100 g</div>
- <div class="grid4"><label class="f">kcal<input type="number" inputmode="decimal" id="pKcal" value="${v("kcal")}"></label><label class="f">Eiweiß<input type="number" inputmode="decimal" id="pP" value="${v("p")}"></label><label class="f">KH<input type="number" inputmode="decimal" id="pC" value="${v("c")}"></label><label class="f">Fett<input type="number" inputmode="decimal" id="pF" value="${v("f")}"></label></div>
- <label class="f">Portionsgröße in g (optional)<input type="number" inputmode="decimal" id="pPortion" value="${v("portion")}"></label>
+ <div class="grid4"><label class="f">kcal<input type="text" inputmode="decimal" autocomplete="off" id="pKcal" value="${v("kcal")}"></label><label class="f">Eiweiß<input type="text" inputmode="decimal" autocomplete="off" id="pP" value="${v("p")}"></label><label class="f">KH<input type="text" inputmode="decimal" autocomplete="off" id="pC" value="${v("c")}"></label><label class="f">Fett<input type="text" inputmode="decimal" autocomplete="off" id="pF" value="${v("f")}"></label></div>
+ <label class="f">Portionsgröße in g (optional)<input type="text" inputmode="decimal" autocomplete="off" id="pPortion" value="${v("portion")}"></label>
  <button class="btn primary block" data-act="saveProd" data-id="${esc(p.id||"")}">Speichern und weiter</button></div>`;
 }
 function findProduct(id){return(M.products&&M.products[id])||BASICS.find(b=>b.id===id)}
@@ -53,7 +53,7 @@ function amountSheet(p,meal,entryIdx){
  const quick=[...new Set([p.portion,50,100,150,200,250].filter(Boolean))].slice(0,5);
  openSheet(`${sheetHd(esc(p.name))}<div class="stack">
  <div class="small muted">${p.brand?esc(p.brand)+" · ":""}je 100 g: ${fmt(p.kcal)} kcal · ${fmt(p.p,1)} g Eiweiß · ${fmt(p.c,1)} g KH · ${fmt(p.f,1)} g Fett</div>
- <label class="f">Menge in g<input type="number" inputmode="decimal" id="amt" value="${g0}"></label>
+ <label class="f">Menge in g<input type="text" inputmode="decimal" autocomplete="off" id="amt" value="${g0}"></label>
  <div class="chips">${quick.map(q=>`<button class="chip" data-act="amtQ" data-g="${q}">${q===p.portion?"1 Portion ("+q+" g)":q+" g"}</button>`).join("")}</div>
  <div class="card" id="amtSum"></div>
  <select id="mealSel2" aria-label="Mahlzeit">${MEALS.map(m=>`<option value="${m.id}" ${m.id===meal?"selected":""}>${m.n}</option>`).join("")}</select>
@@ -188,7 +188,7 @@ function photoTab(){
   ${R.notes?`<div class="hint">${esc(R.notes)}</div>`:""}
   ${R.items.length?R.items.map((it,i)=>`<div class="card airow ${it.on?"":"off"}" data-i="${i}">
    <label class="row"><input type="checkbox" data-ai="on" ${it.on?"checked":""} aria-label="${esc(it.name)} eintragen"><b class="grow">${esc(it.name)}</b><span class="tag ${it.conf==="niedrig"?"warn":""}">${it.conf==="hoch"?"sicher":it.conf==="niedrig"?"unsicher":"geschätzt"}</span></label>
-   <div class="row"><label class="f" style="width:7.5em">Menge (g)<input type="number" inputmode="decimal" id="aig${i}" data-ai="grams" value="${it.grams}"></label><div class="grow" style="text-align:right"><div class="num" style="font-size:22px" id="aik${i}"></div><div class="mdots" id="aim${i}"></div></div></div></div>`).join("")
+   <div class="row"><label class="f" style="width:7.5em">Menge (g)<input type="text" inputmode="decimal" autocomplete="off" id="aig${i}" data-ai="grams" value="${it.grams}"></label><div class="grow" style="text-align:right"><div class="num" style="font-size:22px" id="aik${i}"></div><div class="mdots" id="aim${i}"></div></div></div></div>`).join("")
    :`<div class="empty small">Auf dem Foto wurde kein Essen erkannt. Versuch es mit einem neuen Foto von schräg oben.</div>`}
   ${R.items.length?`<div class="card row" id="aiTot"></div><button class="btn primary block" data-act="aiAdd">Eintragen</button>`:""}
   <button class="btn ghost block" data-act="aiRetry">Neues Foto</button>
