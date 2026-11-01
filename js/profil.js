@@ -33,7 +33,7 @@ function vProfile(){
 function toolsSheet(){
  SH={tools:1};
  openSheet(`${sheetHd("1RM-Rechner")}<div class="stack"><div class="small muted">Schätzt dein Maximalgewicht für eine Wiederholung aus einem Satz. RIR wird eingerechnet.</div>
- <div class="grid4" style="grid-template-columns:repeat(3,1fr)"><label class="f">Gewicht (kg)<input type="number" inputmode="decimal" id="t1kg" value="80"></label><label class="f">Wdh.<input type="number" inputmode="numeric" id="t1r" value="8"></label><label class="f">RIR<input type="number" inputmode="numeric" id="t1rir" value="2"></label></div>
+ <div class="grid4" style="grid-template-columns:repeat(3,1fr)"><label class="f">Gewicht (kg)<input type="text" inputmode="decimal" autocomplete="off" id="t1kg" value="80"></label><label class="f">Wdh.<input type="number" inputmode="numeric" id="t1r" value="8"></label><label class="f">RIR<input type="number" inputmode="numeric" id="t1rir" value="2"></label></div>
  <div class="card" id="t1out"></div></div>`,SH);updTools();
 }
 function updTools(){const kg=num(($("#t1kg")||{}).value)||0,r=num(($("#t1r")||{}).value)||0,rir=num(($("#t1rir")||{}).value)||0;const one=PL.e1rm({kg,reps:r,rir});const el=$("#t1out");if(!el)return;

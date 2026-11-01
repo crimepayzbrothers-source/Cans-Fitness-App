@@ -508,7 +508,7 @@ function focusSheet(ei,si){
  openSheet(`<div class="focus"><div class="row"><button class="iconbtn" data-act="close" aria-label="Schließen">${svgI.back}</button><div class="grow" style="text-align:center"><h2>Satz ${pos.si+1} von ${e.sets.length}</h2><div class="small muted">${esc(ex?ex.n:e.ex)}</div></div><button class="iconbtn" data-act="exInfo" data-id="${e.ex}" aria-label="Übungsdetails">i</button></div>
   ${e.rec?`<div class="hint ${e.rec.kind==="up"?"up":""}" style="text-align:center">${esc(e.rec.text)}</div>`:""}
   <div class="fkg"><button class="rbtn" data-act="fStep" data-k="kg" data-n="-1" aria-label="Weniger Gewicht">−</button>
-   <div class="fring">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/><circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(pos.si+1)/e.sets.length)}" ${g.f}/></svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><input id="fKg" type="number" inputmode="decimal" step="0.5" value="${s.kg??""}" placeholder="–" aria-label="${units(e.ex).kg}"><span class="muted">${units(e.ex).kg}</span></div></div>
+   <div class="fring">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="6"/><circle cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(pos.si+1)/e.sets.length)}" ${g.f}/></svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><input id="fKg" type="text" inputmode="decimal" autocomplete="off" step="0.5" value="${s.kg??""}" placeholder="–" aria-label="${units(e.ex).kg}"><span class="muted">${units(e.ex).kg}</span></div></div>
    <button class="rbtn" data-act="fStep" data-k="kg" data-n="1" aria-label="Mehr Gewicht">+</button></div>
   <div class="lbl" style="text-align:center">${units(e.ex).reps==="Min"?"Minuten":"Wiederholungen"}${tg.repMin?` · Ziel ${tg.repMin===tg.repMax?tg.repMin:tg.repMin+"–"+tg.repMax}`:""}</div>
   <div class="fkg"><button class="rbtn" data-act="fStep" data-k="reps" data-n="-1" aria-label="Weniger Wiederholungen">−</button><input id="fReps" class="freps" type="number" inputmode="numeric" value="${s.reps??""}" aria-label="Wiederholungen"><button class="rbtn" data-act="fStep" data-k="reps" data-n="1" aria-label="Mehr Wiederholungen">+</button></div>
@@ -526,7 +526,7 @@ const MOODS=["😣","😕","😐","🙂","😄"];
 function saveWorkingWeights(w){
  const P=M.plan;if(!P||w.planId!==P.id||w.planDay==null||!P.days[w.planDay])return 0;let n=0;
  for(const e of w.exercises){const it=P.days[w.planDay].items.find(x=>x.ex===e.ex);if(!it)continue;
-  const top=e.sets.filter(x=>x.reps>0).sort((a,b)=>(b.kg||0)-(a.kg||0)||b.reps-a.reps)[0];if(!top)continue;
+  const top=e.sets.filter(x=>x.reps>0&&x.type!=="warm").sort((a,b)=>(b.kg||0)-(a.kg||0)||b.reps-a.reps)[0];if(!top)continue;
   it.last={kg:top.kg||0,reps:top.reps,rir:top.rir??null,date:w.date};if(!w.deload&&top.kg>0)it.kg=top.kg;n++}
  if(n)(P.log=P.log||[]).unshift({d:today(),t:`Gewichte und RIR von ${n} Übungen gespeichert (${P.days[w.planDay].name})`});
  return n;
@@ -662,7 +662,7 @@ function statBody(){
  return`<div class="card stack"><div class="row" style="align-items:flex-start"><div class="grow"><div class="lbl">Gewicht</div><div class="bigstat">${fmt(cur,1)} <span>kg</span></div></div>${first&&all.length>1?`<div style="text-align:right"><div class="trend ${cur>first.kg&&goal&&goal<first.kg?"down":""}">${cur-first.kg>0?"+":""}${fmt(cur-first.kg,1)} kg</div><div class="small muted">seit ${new Date(first.d+"T12:00:00").toLocaleDateString("de-DE")}</div></div>`:""}</div>
   ${segBar(r,[["1m","1M"],["3m","3M"],["6m","6M"],["1y","1J"],["all","Alle"]],"brange")}
   ${wts.length>1?lineChart(wts.map(w=>({x:w.d,y:w.kg})),"--accent","kg"):`<div class="empty small">Trage dein Gewicht regelmäßig ein, dann erscheint hier der Verlauf.</div>`}
-  <div class="row"><input type="number" inputmode="decimal" step="0.1" id="wIn" placeholder="${fmt(cur,1)} kg" aria-label="Gewicht heute"><button class="btn primary" data-act="addWeight">Eintragen</button></div></div>
+  <div class="row"><input type="text" inputmode="decimal" autocomplete="off" step="0.1" id="wIn" placeholder="${fmt(cur,1)} kg" aria-label="Gewicht heute"><button class="btn primary" data-act="addWeight">Eintragen</button></div></div>
  <div class="card stack"><div class="row"><div class="grow"><div class="lbl">Zielgewicht</div><div class="num" style="font-size:22px">${goal?fmt(goal,1)+" kg":"nicht gesetzt"}</div></div>${goal?`<div style="text-align:right"><div class="num">${fmt(cur-goal,1)} kg</div><div class="small muted">bis zum Ziel</div></div>`:`<button class="btn sm ghost" data-act="profile">Festlegen</button>`}</div>
   ${prog!=null?`<div class="bar"><i style="width:${prog*100}%;background:var(--f);box-shadow:0 0 10px var(--f)"></i></div><div class="small muted">${Math.round(prog*100)} % geschafft</div>`:""}</div>`;
 }

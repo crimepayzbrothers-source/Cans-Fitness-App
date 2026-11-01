@@ -150,7 +150,7 @@ function plateOut(exId,kg){const ex=EXMAP[exId],c=plateCfg(),bar=barKg(ex),r=PL.
  return lines+(ws.length?`<div class="lbl" style="padding-top:8px">Aufwärmsätze</div><div class="card list" style="padding:2px 12px">${ws.map(w=>{const q=PL.plateCalc(w.kg,bar,c.have);return`<div class="li"><div class="n"><div class="num">${fmt(w.kg,1)} kg × ${w.reps}</div><div class="small muted">${w.bar?"leere Stange":"pro Seite: "+(q.perSide.map(p=>fmt(p,2)).join(" + ")||"–")}</div></div></div>`}).join("")}</div>`:"")}
 function plateSheet(exId,kg){const ex=EXMAP[exId];if(!ex||!PL.barFor(ex))return;const c=plateCfg(),t=PL.barFor(ex);SH={plates:exId};
  openSheet(`${sheetHd("Scheibenrechner")}<div class="stack"><div class="small muted">${esc(ex.n)}</div>
- <label><div class="lbl">Gesamtgewicht (kg)</div><input type="number" inputmode="decimal" step="0.5" id="plKg" value="${kg||""}" placeholder="z. B. 80"></label>
+ <label><div class="lbl">Gesamtgewicht (kg)</div><input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="plKg" value="${kg||""}" placeholder="z. B. 80"></label>
  <div id="plOut">${kg?plateOut(exId,kg):""}</div>
  <div class="lbl">${t==="ez"?"SZ-Stange":"Langhantel"}</div><div class="chips">${(t==="ez"?[7,8,10,12]:[10,15,20]).map(v=>`<button class="chip ${c[t]===v?"on":""}" data-act="plBar" data-t="${t}" data-v="${v}">${v} kg</button>`).join("")}</div>
  <div class="lbl">Vorhandene Scheiben</div><div class="chips">${PL.PLATES.map(p=>`<button class="chip ${c.have.includes(p)?"on":""}" data-act="plHave" data-v="${p}">${fmt(p,2)}</button>`).join("")}</div>
@@ -196,7 +196,7 @@ function ssNext(A,ei,si){const inf=ssInfo(A,ei);if(!inf)return null;for(let k=in
 function savePlanSS(A){const P=M.plan;if(!P||A.planId!==P.id||A.planDay==null||!P.days[A.planDay])return;P.days[A.planDay].items.forEach(it=>{const e=A.exercises.find(x=>x.ex===it.ex);if(e){if(e.ss)it.ss=e.ss;else delete it.ss}})}
 function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.active.exercises[ei].ex:"");return`<div class="setrow ${s.done?"done":""}" data-ei="${ei}" data-si="${si}">
  <button class="no st-${s.type||"n"}" data-act="setType" aria-label="Satztyp ändern (Satz ${si+1})">${setLabel(ei,si)}</button>
- <label><div class="sub">${u.kg}</div><input type="number" inputmode="decimal" step="0.5" id="w${ei}_${si}_kg" data-w="kg" value="${s.kg??""}" placeholder="–"></label>
+ <label><div class="sub">${u.kg}</div><input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="w${ei}_${si}_kg" data-w="kg" value="${inNum(s.kg)}" placeholder="–"></label>
  <label><div class="sub">${u.reps}</div><input type="number" inputmode="numeric" id="w${ei}_${si}_reps" data-w="reps" value="${s.reps??""}" placeholder="${ph??"–"}"></label>
  <button class="ok" data-act="done" aria-label="Satz erledigt">✓</button>
  <div class="rirline"><span class="lbl">RIR</span>${[0,1,2,3,4,5].map(r=>`<button class="rb ${s.rir===r?"on":""}" data-act="rir" data-r="${r}">${r===5?"5+":r}</button>`).join("")}</div></div>`}

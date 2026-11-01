@@ -90,7 +90,6 @@ document.addEventListener("click",e=>{
  case"libAvail":UI.libAvail=!UI.libAvail;render();break;
  case"eqNone":M.equipment=[];equipChanged();break;
  case"gen":genSheet();break;
- case"goProfile":location.hash="#profil";break;
  case"planTab":UI.planTab=d.t;render();break;
  case"statTab":UI.statTab=d.t;render();break;
  case"period":UI.period=d.t;render();break;
@@ -178,7 +177,7 @@ document.addEventListener("click",e=>{
  case"rmWEx":M.active.exercises.splice(SH.ei,1);persist("main");closeSheet();render();break;
  case"rir":case"done":{const row=b.closest(".setrow");const ei=+row.dataset.ei,si=+row.dataset.si;const s=M.active.exercises[ei].sets[si];
   if(a==="rir"){const r=+d.r;s.rir=s.rir===r?null:r;row.querySelectorAll(".rb").forEach(x=>x.classList.toggle("on",+x.dataset.r===s.rir))}
-  else{s.done=!s.done;if(s.done){s.kg=num(row.querySelector('[data-w="kg"]').value);s.reps=num(row.querySelector('[data-w="reps"]').value);if(s.reps==null){const tg=M.active.exercises[ei].target;if(tg){s.reps=tg.repMax;row.querySelector('[data-w="reps"]').value=s.reps}}{const nx=ssNext(M.active,ei,si);if(s.type==="drop"){}else if(s.type==="warm")startRest(45);else if(nx!=null){stopRest&&R&&stopRest();toast(`Supersatz: weiter mit ${EXMAP[M.active.exercises[nx].ex].n}`);const el=document.querySelector(`.wex[data-ei="${nx}"]`);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}else startRest((M.active.exercises[ei].target&&M.active.exercises[ei].target.rest)||M.settings.rest||90)}const nxt=M.active.exercises[ei].sets[si+1];if(nxt&&nxt.kg==null&&s.kg!=null&&s.type!=="warm"){nxt.kg=s.kg;const ni=document.getElementById(`w${ei}_${si+1}_kg`);if(ni)ni.value=s.kg}}row.classList.toggle("done",s.done)}
+  else{s.done=!s.done;if(s.done){s.kg=num(row.querySelector('[data-w="kg"]').value);s.reps=num(row.querySelector('[data-w="reps"]').value);if(s.reps==null){const tg=M.active.exercises[ei].target;if(tg){s.reps=tg.repMax;row.querySelector('[data-w="reps"]').value=s.reps}}{const nx=ssNext(M.active,ei,si);if(s.type==="drop"){}else if(s.type==="warm")startRest(45);else if(nx!=null){stopRest&&R&&stopRest();toast(`Supersatz: weiter mit ${EXMAP[M.active.exercises[nx].ex].n}`);const el=document.querySelector(`.wex[data-ei="${nx}"]`);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}else startRest((M.active.exercises[ei].target&&M.active.exercises[ei].target.rest)||M.settings.rest||90)}const nxt=M.active.exercises[ei].sets[si+1];if(nxt&&nxt.kg==null&&s.kg!=null&&s.type!=="warm"){nxt.kg=s.kg;const ni=document.getElementById(`w${ei}_${si+1}_kg`);if(ni)ni.value=inNum(s.kg)}}row.classList.toggle("done",s.done)}
   persist("main");break}
  case"restAdj":if(R){R.end+=(+d.n)*1000;R.beeped=false;tickRest()}break;
  case"restStop":stopRest();break;
