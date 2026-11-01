@@ -478,7 +478,9 @@ function stepFor(ex, level) {
   if ((ex.pat === "squat" || ex.pat === "hinge") && (ex.kind === "bb" || (ex.kind === "m" && ex.c))) return level === "beg" ? 5 : 2.5;
   return 2.5;
 }
-const e1rm = s => (s.kg || 0) * (1 + ((s.reps || 0) + (s.rir || 0)) / 30);
+/* Satztypen (optional, ältere Daten haben keinen): "warm" = Aufwärmsatz (zählt nirgends), "drop" = Drop-Satz, "fail" = bis zum Versagen.
+   Aufwärmsätze liefern kein 1RM, damit Bestleistungen, Empfehlungen und Statistiken nur Arbeitssätze sehen. */
+const e1rm = s => s && s.type === "warm" ? 0 : (s.kg || 0) * (1 + ((s.reps || 0) + (s.rir || 0)) / 30);
 const roundTo = (v, st) => Math.round(v / st) * st;
 /* history: [{date, sets:[{kg,reps,rir}]}] neueste zuerst. Liefert Empfehlung für heute. */
 function recommend(exId, target, history, ctx) {
