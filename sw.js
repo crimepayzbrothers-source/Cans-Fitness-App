@@ -1,6 +1,6 @@
 // Cans Fitness App – Offline-Cache. Bei Änderungen an der App die Versionsnummer erhöhen.
-const CACHE = "et-v23";
-const SHELL = ["./", "./index.html", "./planner.js?v=22", "./ai.js?v=22", "./figure.js?v=22", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./geraete.js?v=2", "./figure3d.js?v=4", "./three.module.min.js", "./three.core.min.js"];
+const CACHE = "et-v24";
+const SHELL = ["./", "./index.html", "./planner.js?v=23", "./ai.js?v=23", "./figure.js?v=23", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./geraete.js?v=2", "./figure3d.js?v=4", "./three.module.min.js", "./three.core.min.js", "./fonts/barlow-400.woff", "./fonts/barlow-500.woff", "./fonts/barlow-600.woff", "./fonts/exo2-var.woff"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -14,13 +14,17 @@ self.addEventListener("fetch", e => {
   const u = new URL(req.url);
   if (u.hostname.endsWith("openfoodfacts.org")) return; // immer live abfragen
   if (u.origin === location.origin) {
-    // eigene Dateien: erst Netz (damit Updates ankommen), sonst Cache
-    e.respondWith(fetch(req, {cache: "no-cache"}).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return r; })
-      .catch(() => caches.match(req).then(r => r || caches.match("./index.html"))));
+    // eigene Dateien: erst Netz (damit Updates ankommen). Antwortet das Netz nicht binnen 3 s (schwacher Empfang im Studio),
+    // kommt die Datei aus dem Cache; der Netzabruf läuft im Hintergrund weiter und aktualisiert den Cache für den nächsten Start.
+    const net = fetch(req, {cache: "no-cache"}).then(r => { if (r && r.ok) { const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); } return r; });
+    const fromCache = () => caches.match(req).then(r => r || (req.mode === "navigate" ? caches.match("./index.html") : undefined));
+    const slow = new Promise(res => setTimeout(res, 3000)).then(fromCache);
+    e.respondWith(Promise.race([net.catch(fromCache), slow.then(r => r || net)]).then(r => r || net).catch(fromCache).then(r => r || Response.error()));
+    e.waitUntil(net.catch(() => {}));
     return;
   }
-  if (/jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/.test(u.hostname)) {
-    // Bibliothek und Schriften: Cache zuerst
+  if (/jsdelivr\.net/.test(u.hostname)) {
+    // Barcode-Bibliothek: Cache zuerst
     e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return res; })));
   }
 });

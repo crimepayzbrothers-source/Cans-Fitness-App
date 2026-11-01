@@ -12,9 +12,13 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192-v2.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon-v2.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap">
+<link rel="preload" href="fonts/barlow-400.woff" as="font" type="font/woff" crossorigin>
 <style>
+/* Schriften liegen in der App selbst (SIL Open Font License, siehe fonts/OFL-*.txt): keine Verbindung zu Google beim Start. */
+@font-face{font-family:"Barlow";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/barlow-400.woff) format("woff")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/barlow-500.woff) format("woff")}
+@font-face{font-family:"Barlow";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/barlow-600.woff) format("woff")}
+@font-face{font-family:"Exo 2";font-style:normal;font-weight:500 800;font-display:swap;src:url(fonts/exo2-var.woff) format("woff")}
 :root{color-scheme:dark;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0}
 img{max-width:100%}
@@ -145,6 +149,12 @@ nav.tabs a.on{color:var(--accent)}
 .rb.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .hint{font-size:14px;background:var(--surface2);border-radius:10px;padding:8px 10px}
 .hint.up{border-left:3px solid var(--f)}
+.warm{background:var(--surface2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.warm .lbl{margin:0}
+.wus{display:flex;flex-wrap:wrap;gap:6px;font-size:14px}
+.wu{border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap}
+#plOut svg{width:100%;height:auto;display:block}
+#plOut .big{font-family:var(--display);font-weight:700;font-size:24px}
 .sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px}
 
 /* rest timer */
@@ -430,10 +440,9 @@ svg.big{height:260px;width:auto}
 <input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
-<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
-<script src="planner.js?v=22"></script>
-<script src="ai.js?v=22"></script>
-<script src="figure.js?v=22"></script>
+<script src="planner.js?v=23"></script>
+<script src="ai.js?v=23"></script>
+<script src="figure.js?v=23"></script>
 <script src="geraete.js?v=2"></script>
 <script>
 "use strict";
@@ -601,11 +610,13 @@ const Store={db:null,uid:null,mode:"local",
    try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(!k.startsWith("et/"))continue;const v=JSON.parse(localStorage.getItem(k));const rel=k.slice(3);if(rel==="main")Object.assign(M,v);else{const[c,id]=rel.split("/");if(c==="days")DAYS[id]=v;else if(c==="workouts")WORKOUTS[id]=v}}}catch(e){}
   }
  },
- async write(rel,data){if(this.mode==="db"){if(data===null)return this.ref(rel).delete();return this.ref(rel).set(data)}try{if(data===null)localStorage.removeItem("et/"+rel);else localStorage.setItem("et/"+rel,JSON.stringify(data))}catch(e){}}
+ async write(rel,data){if(this.mode==="db"){if(data===null)return this.ref(rel).delete();return this.ref(rel).set(data)}try{if(data===null)localStorage.removeItem("et/"+rel);else localStorage.setItem("et/"+rel,JSON.stringify(data))}
+  catch(e){/* nicht verschlucken: voller Speicher muss sichtbar werden, sonst gehen neue Einträge unbemerkt verloren */
+   const err=new Error("Speichern fehlgeschlagen");err.code=(e&&(e.name==="QuotaExceededError"||e.code===22||e.code===1014))?"quota_exceeded":"local";throw err}}
 };
 const timers={},chains={};
 function dataFor(rel){if(rel==="main")return clone(M);const[c,id]=rel.split("/");if(c==="days")return DAYS[id]?{...clone(DAYS[id]),date:id}:null;return WORKOUTS[id]?clone(WORKOUTS[id]):null}
-function persist(rel,now){clearTimeout(timers[rel]);const run=()=>{delete timers[rel];const data=dataFor(rel);chains[rel]=(chains[rel]||Promise.resolve()).then(()=>Store.write(rel,data)).catch(e=>{if(e&&e.code==="unavailable")setTimeout(()=>Store.write(rel,dataFor(rel)).catch(()=>toast("Speichern hat nicht geklappt. Bitte später erneut versuchen.")),1200+Math.random()*800);else if(e&&e.code==="quota_exceeded")toast("Speicher voll – alte Einträge löschen.");else toast("Speichern hat nicht geklappt.")})};if(now)run();else timers[rel]=setTimeout(run,500)}
+function persist(rel,now){clearTimeout(timers[rel]);const run=()=>{delete timers[rel];const data=dataFor(rel);chains[rel]=(chains[rel]||Promise.resolve()).then(()=>Store.write(rel,data)).then(()=>{if(UI.storeFull){UI.storeFull=false;render()}}).catch(e=>{if(e&&e.code==="unavailable")setTimeout(()=>Store.write(rel,dataFor(rel)).catch(()=>toast("Speichern hat nicht geklappt. Bitte später erneut versuchen.")),1200+Math.random()*800);else if(e&&e.code==="quota_exceeded"){UI.storeFull=true;toast("Speicher voll – der letzte Eintrag wurde NICHT gespeichert. Bitte jetzt eine Sicherung exportieren.");render()}else toast("Speichern hat nicht geklappt.")})};if(now)run();else timers[rel]=setTimeout(run,500)}
 document.addEventListener("visibilitychange",()=>{if(document.hidden)Object.keys(timers).forEach(k=>persist(k,true))});
 
 /* Leuchten für Ringe: eigener SVG-Filter mit großzügigem festem Bereich, damit Chrome nichts abschneidet */
@@ -640,70 +651,12 @@ function homeStats(){
  const thisWeek=ws.filter(w=>w.date>=wk);
  const goal=M.plan?M.plan.days.length:3;
  const vol=thisWeek.reduce((s,w)=>s+volume(w),0);
- const active=x=>ws.some(w=>w.date===x)||dayTotals(x).kcal>0;
- let streak=0,d=today();if(!active(d))d=shiftDate(d,-1);let g=0;while(active(d)&&g++<400){streak++;d=shiftDate(d,-1)}
- const since=shiftDate(today(),-30),best={};let pbs=0;
- ws.slice().sort((a,b)=>a.start-b.start).forEach(w=>(w.exercises||[]).forEach(e=>{if(PL.isCardio(e.ex))return;const b=Math.max(0,...e.sets.map(PL.e1rm));if(!b)return;if(best[e.ex]!=null&&b>best[e.ex]*1.001&&w.date>=since)pbs++;if(best[e.ex]==null||b>best[e.ex])best[e.ex]=b}));
+ const streak=weekStreak(),since=shiftDate(today(),-30),pbs=prsSince(since);
  const months=[],now=new Date();
  for(let i=5;i>=0;i--){const m=new Date(now.getFullYear(),now.getMonth()-i,1);const key=m.getFullYear()+"-"+String(m.getMonth()+1).padStart(2,"0");months.push({key,label:m.toLocaleDateString("de-DE",{month:"short"}).replace(".",""),v:ws.filter(w=>w.date.slice(0,7)===key).reduce((s,w)=>s+volume(w),0)})}
- const a=months[5].v,b=months[4].v;const trend=b>0?Math.round((a-b)/b*100):null;
+ const trend=monthTrend(ws,now);
  return{done:thisWeek.length,goal,vol,streak,pbs,months,trend};
 }
-function bodySvgOld(set){
- const on=m=>set.has(m)?"on":"";
- return`<svg class="fig" viewBox="0 0 120 210" aria-hidden="true"><defs><radialGradient id="mg" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#7CC4FF"/><stop offset="1" stop-color="#1F6BFF"/></radialGradient><filter id="gl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
- <style>.fig .p{fill:rgba(90,140,230,.14);stroke:rgba(140,190,255,.45);stroke-width:1}.fig .p.on{fill:url(#mg);stroke:#9FD3FF;filter:url(#gl)}</style>
- <circle class="p" cx="60" cy="16" r="10"/><rect class="p" x="55" y="26" width="10" height="7" rx="3"/>
- <ellipse class="p ${on("side")||on("front")||on("rear")}" cx="37" cy="43" rx="10" ry="8"/><ellipse class="p ${on("side")||on("front")||on("rear")}" cx="83" cy="43" rx="10" ry="8"/>
- <path class="p ${on("chest")}" d="M45 38h14v22c-6 2-11 1-15-2-2-6-1-14 1-20z"/><path class="p ${on("chest")}" d="M75 38H61v22c6 2 11 1 15-2 2-6 1-14-1-20z"/>
- <path class="p ${on("back")}" d="M43 60c3 4 4 14 3 26l-6-2c-2-8-2-17 0-24z"/><path class="p ${on("back")}" d="M77 60c-3 4-4 14-3 26l6-2c2-8 2-17 0-24z"/>
- <rect class="p ${on("abs")}" x="50" y="62" width="20" height="34" rx="6"/>
- <ellipse class="p ${on("biceps")||on("triceps")}" cx="28" cy="64" rx="6" ry="14"/><ellipse class="p ${on("biceps")||on("triceps")}" cx="92" cy="64" rx="6" ry="14"/>
- <ellipse class="p" cx="24" cy="92" rx="5" ry="13"/><ellipse class="p" cx="96" cy="92" rx="5" ry="13"/>
- <path class="p ${on("glutes")}" d="M46 98h28l2 12H44z"/>
- <ellipse class="p ${on("quads")||on("hams")}" cx="50" cy="134" rx="9.5" ry="23"/><ellipse class="p ${on("quads")||on("hams")}" cx="70" cy="134" rx="9.5" ry="23"/>
- <ellipse class="p ${on("calves")}" cx="49" cy="178" rx="6.5" ry="15"/><ellipse class="p ${on("calves")}" cx="71" cy="178" rx="6.5" ry="15"/>
- </svg>`;
-}
-function vHomeOld(){
- const st=homeStats(),P=M.plan,h=new Date().getHours();
- const hi=h<11?"Guten Morgen":h<18?"Hallo":"Guten Abend";
- const name=(M.profile&&M.profile.name)||"";
- const C=2*Math.PI*52,pct=Math.min(1,st.done/(st.goal||1));
- const T=targets(),t=dayTotals(today());
- let hero;
- if(M.active){const A=M.active;hero=`<div class="card hero">${bodySvg(new Set(A.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)))}<div class="txt"><div class="lbl">Training läuft</div><h2>${esc(A.dayName)}</h2><div class="small muted">${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} Sätze erledigt</div></div><a class="btn glow block" href="#training" style="position:relative">Weiter trainieren →</a></div>`}
- else if(P){const ps=planState(),nd=upcoming(P).di,day=P.days[nd],its=day.items.map(it=>itemView(it,ps));
-  const ms=[...new Set(day.items.map(it=>(EXMAP[it.ex]||{}).m).filter(Boolean))];
-  const rir=its.length?its.reduce((s,it)=>s+it.rir,0)/its.length:2;const inten=ps&&ps.deload?"Deload":rir<=1.2?"Hohe Intensität":rir<=2.2?"Mittlere Intensität":"Moderate Intensität";
-  hero=`<div class="card hero">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">Heutiges Training</div><h2>${esc(day.name)}</h2><div class="small muted">${ms.slice(0,4).map(m=>PL.MUSN[m]).join(" · ")}</div></div>
-  <div class="meta"><span>◷ ${day.items.length} Übungen</span><span>⏱ ${P.v===2?PL.estMinutes(its):"–"} Min</span><span>⚡ ${inten}</span></div>
-  <button class="btn glow block" data-act="start" data-d="${nd}" style="position:relative">Training starten →</button></div>`}
- else hero=`<div class="card hero">${bodySvg(new Set())}<div class="txt"><div class="lbl">Heutiges Training</div><h2>Noch kein Plan</h2><div class="small muted">Erstelle in 7 Schritten einen Plan, der zu deinem Studio passt.</div></div><a class="btn glow block" href="#plan" style="position:relative">Plan erstellen →</a></div>`;
- const max=Math.max(1,...st.months.map(m=>m.v));const ticks=niceTicks(0,max/1000,3);const y1=ticks[ticks.length-1]||1;
- const W=320,H=150,L=30,B=22,Tp=10,bw=(W-L-8)/6;const Y=v=>Tp+(1-v/1000/y1)*(H-Tp-B);
- const chart=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trainingsvolumen pro Monat"><defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5FB4FF"/><stop offset="1" stop-color="#1F4FD1" stop-opacity=".35"/></linearGradient><filter id="bgl" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#2F8CFF" flood-opacity=".8"/></filter></defs>
-  ${ticks.map(v=>`<line x1="${L}" x2="${W-4}" y1="${Y(v*1000)}" y2="${Y(v*1000)}" stroke="rgba(140,170,230,.12)"/><text x="${L-6}" y="${Y(v*1000)+4}" text-anchor="end" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${fmt(v,1)}t</text>`).join("")}
-  ${st.months.map((m,i)=>`<rect x="${L+i*bw+bw*.28}" y="${Y(m.v)}" width="${bw*.44}" height="${Math.max(0,H-B-Y(m.v))}" rx="3" fill="url(#bg1)" ${i===5?`filter="url(#bgl)"`:""}/><text x="${L+i*bw+bw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="#8D9BBA" font-family="Barlow,sans-serif">${m.label}</text>`).join("")}</svg>`;
- const tile=(ic,v,l)=>`<div class="card tile"><div class="ic">${ic}</div><div style="min-width:0"><div class="v">${v}</div><div class="l">${l}</div></div></div>`;
- return`<div class="section">
- <div class="greet"><div class="grow"><div class="hi">${hi}</div><div class="nm">${name?esc(name):"Can"}</div></div></div>
- <div class="dash">
-  <div class="card wring"><div class="rw"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/><circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" color="#2F8CFF" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}"/></svg><div class="c"><div class="big">${st.done}<span> / ${st.goal}</span></div><div class="small muted">Einheiten</div></div></div><div class="small muted">Diese Woche</div></div>
-  <div class="tiles">
-   ${tile(`<svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-7 2 1 3 3 3 5 1-2 1-5 0-9z" fill="#FF6B3D"/></svg>`,st.streak,"Tage Serie")}
-   ${tile(`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5FB4FF" stroke-width="2.4" stroke-linecap="round"><path d="M6 20V12M12 20V6M18 20v-9"/></svg>`,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}
-   ${tile(`<svg width="24" height="24" viewBox="0 0 24 24" fill="#F2C14E"><path d="M7 3h10v3a5 5 0 0 1-4 4.9V14h3v3H8v-3h3v-3.1A5 5 0 0 1 7 6zM4 4h3v2a2 2 0 0 1-3-1zM20 4h-3v2a2 2 0 0 0 3-1zM8 18h8v3H8z"/></svg>`,st.pbs,"Bestleistungen (30 Tage)")}
-  </div>
- </div>
- ${hero}
- <a class="card row" href="#ernaehrung" style="text-decoration:none;color:inherit"><div class="grow"><div class="lbl">Ernährung heute</div><div class="num" style="font-size:22px">${fmt(t.kcal)} <span class="small muted">/ ${fmt(T.kcal)} kcal</span></div><div class="bar" style="margin-top:6px"><i style="width:${Math.min(100,t.kcal/(T.kcal||1)*100)}%;background:var(--kcal)"></i></div></div><div class="mdots" style="flex-direction:column;align-items:flex-end;gap:2px"><span class="p">${fmt(t.p)} / ${fmt(T.p)} g</span><span class="c">${fmt(t.c)} g</span><span class="f">${fmt(t.f)} g</span></div></a>
- <div class="card stack"><div class="row"><h3 class="grow">Leistungsentwicklung</h3>${st.trend!=null?`<span class="trend ${st.trend<0?"down":""}">${st.trend>0?"+":""}${st.trend} %</span>`:""}</div>
-  ${st.months.some(m=>m.v>0)?`<div class="chart">${chart}</div><div class="small muted">Trainingsvolumen (Gewicht × Wiederholungen) pro Monat${st.trend!=null?", Veränderung zum Vormonat":""}.</div>`:`<div class="empty small">Nach deinen ersten Trainings siehst du hier dein Volumen pro Monat.</div>`}</div>
- <div class="row"><a class="btn ghost grow" href="#studio">Studio-Geräte</a><button class="btn ghost grow" data-act="profile">Profil &amp; Ziele</button></div>
- </div>`;
-}
-
 function vFood(){
  const d=UI.date,T=targets(),t=dayTotals(d),day=DAYS[d];
  const pct=Math.min(1,t.kcal/(T.kcal||1)),rest=Math.round(T.kcal-t.kcal);
@@ -785,40 +738,6 @@ const restTxt=s=>{s=+s||90;return s>=60?(s%60?`${Math.floor(s/60)}:${String(s%60
 function planState(){const P=M.plan;if(!P||P.v!==2||!P.meso)return null;const st=PL.mesoState(P,today());if(st&&st.rolled){P.log=P.log||[];P.log.unshift({d:today(),t:`Zyklus ${st.n} gestartet. Übungen bleiben gleich, Gewichte steigen weiter.`});P.adapted={};persist("main")}return st}
 function itemView(it,st){const v={...it,rir:PL.rirFor(it,st)};if(st&&st.deload)v.sets=PL.deloadSets(it.sets);return v}
 function isoWeekKey(d){d=new Date((d||today())+"T12:00:00");const t=new Date(d);t.setDate(t.getDate()+3-((t.getDay()+6)%7));const w1=new Date(t.getFullYear(),0,4);return t.getFullYear()+"-W"+(1+Math.round(((t-w1)/864e5-3+((w1.getDay()+6)%7))/7))}
-function vPlanOld(){
- const P=M.plan;
- if(!P)return`<div class="section"><h2>Trainingsplan</h2>
-  <div class="empty"><div><b>Noch kein Plan</b></div><div class="small">In 7 kurzen Schritten: Ziel, Erfahrung, Tage, Zeit, Geräte und Fokus. Der Plan verteilt die Sätze pro Muskel sinnvoll auf die Woche und passt sich an dein Training an.</div><button class="btn primary" data-act="gen">Plan erstellen</button></div></div>`;
- if(P.v!==2)return`<div class="section"><h2>${esc(P.name)}</h2>
-  <div class="banner warn"><div class="grow">Dieser Plan stammt vom alten Planer. Der neue Planer plant Wochensätze pro Muskel, Pausen, Zyklen und passt sich nach jedem Training an.</div></div>
-  <button class="btn primary block" data-act="gen">Mit neuem Planer erstellen</button>${oldDays(P)}</div>`;
- const st=planState(),o=P.opts||{},nd=upcoming(P).di,vol=PL.weeklyVolume(P.days);
- const pains=[];P.days.forEach((d,di)=>d.items.forEach((it,ii)=>{if(it.pain)pains.push({di,ii,it})}));
- const wk=st?Array.from({length:st.len},(_,i)=>`<i class="${i===st.len-1?"dl":""} ${i<=st.week?"on":""}"></i>`).join(""):"";
- return`<div class="section">
- <div class="card stack" style="gap:10px">
-  <div class="row" style="align-items:flex-start"><div class="grow" style="min-width:0"><div class="lbl">${PL.GOALS[P.goal]||""}</div><h2 style="overflow-wrap:break-word">${esc(PL.SPLITS[P.split]?PL.SPLITS[P.split].n:P.name).replace(/\//g,"/<wbr>")}</h2><div class="small muted">${P.days.length} Tage · ${PL.LEVELS[o.level]||""} · ${o.minutes} Min${o.loc==="home"?" · Zuhause":""}${o.weekdays&&o.weekdays.length?" · "+o.weekdays.map(i=>WD[i]).join(", "):""}</div></div><button class="btn sm ghost" data-act="gen">Anpassen</button></div>
-  ${st?`<div class="stack" style="gap:6px"><div class="row small"><b class="grow">${st.deload?"Deload-Woche":"Zyklus "+st.n+" · Woche "+(st.week+1)+" von "+st.len}</b><span class="muted">${st.deload?"halbe Sätze, leichter":"Aufbau"}</span></div><div class="weekbar" aria-hidden="true">${wk}</div></div>`:""}
-  <details class="more"><summary>Warum dieser Plan?</summary><div class="why">
-   <div>${esc(P.splitWhy)}</div>${P.splitNote?`<div>${esc(P.splitNote)}</div>`:""}
-   <div>Jeder Muskel bekommt eine feste Zahl harter Sätze pro Woche, passend zu Ziel und Erfahrung. Übungen, die einen Muskel mitbelasten (z. B. Bankdrücken für den Trizeps), zählen halb.</div>
-   <div>Ein Zyklus dauert ${st?st.len:"4–6"} Wochen: Die Wiederholungen im Tank (RIR) sinken von Woche zu Woche leicht, die letzte Woche ist ein Deload zur Erholung.</div>
-   <div>Gewichte: Schaffst du in allen Sätzen das obere Ende des Wiederholungsbereichs, schlägt die App beim nächsten Mal mehr Gewicht vor.</div></div></details>
- </div>
- ${P.suggestDeload&&!(st&&st.deload)?`<div class="banner warn"><div class="grow">Die letzten Einheiten waren hart oder die Leistung ist gesunken. Eine Deload-Woche bringt dich schneller weiter als Durchziehen.</div><button class="btn sm" data-act="deloadNow">Deload</button></div>`:""}
- ${pains.map(p=>`<button class="banner warn" data-act="item" data-d="${p.di}" data-i="${p.ii}" style="text-align:left;width:100%;border-top:0;border-right:0;border-bottom:0"><div class="grow">Beschwerden bei <b>${esc(EXMAP[p.it.ex].n)}</b> gemeldet. Tippe hier, um die Übung zu tauschen.</div><span>›</span></button>`).join("")}
- ${(P.warnings||[]).map(w=>`<div class="banner warn"><div class="grow">${esc(w)}</div></div>`).join("")}
- <div class="card row"><div class="grow"><div class="lbl">Als Nächstes</div><h3>${esc(P.days[nd].name)}</h3><div class="small muted">${P.days[nd].items.length} Übungen · ca. ${PL.estMinutes(P.days[nd].items.map(it=>itemView(it,st)))} Min</div></div><button class="btn primary" data-act="start" data-d="${nd}">Starten</button></div>
- <div class="card stack" style="gap:4px"><div class="row"><h3 class="grow">Sätze pro Woche</h3><span class="small muted">geplant / Ziel</span></div>
-  ${PL.MUSCLES.filter(m=>(P.targets[m]||0)>0||vol[m]>=1).map(m=>{const t=P.targets[m]||0,v=vol[m],pr=(o.prio||[]).includes(m);const pct=t?Math.min(100,v/t*100):100;const col=t&&v<t*.7?"var(--warn)":"var(--accent)";return`<div class="vrow"><span>${PL.MUSN[m]}${pr?" ★":""}</span><div class="bar"><i style="width:${pct}%;background:${col}"></i></div><span class="num">${String(Math.round(v*10)/10).replace(".",",")} / ${t}</span></div>`}).join("")}
-  <div class="small muted" style="padding-top:4px">★ = dein Fokus. Mitbelastung zählt halb (Pelland u. a. 2024).</div></div>
- ${P.days.map((d,di)=>`<div class="card daycard"><div class="row" style="padding-bottom:6px"><div class="grow"><h3>${esc(d.name)}${di===nd?' <span class="tag acc">als Nächstes</span>':""}</h3><div class="daymini">ca. ${PL.estMinutes(d.items.map(it=>itemView(it,st)))} Min · ${d.items.reduce((s,it)=>s+itemView(it,st).sets,0)} Sätze</div></div><button class="btn sm ${di===nd?"primary":"ghost"}" data-act="start" data-d="${di}">Starten</button></div>
-  ${d.items.map((it0,ii)=>{const it=itemView(it0,st);const ex=EXMAP[it.ex];return`<button class="exrow" data-act="item" data-d="${di}" data-i="${ii}">${exMini(ex)}<div class="grow" style="min-width:0"><div>${esc(ex?ex.n:it.ex)}${(M.prefs&&M.prefs.fav||[]).includes(it.ex)?" ★":""}</div><div class="small muted">${ex?PL.MUSN[ex.m]:""}${it.kg?` · ${fmt(it.kg,1)} kg`:""}${it.pain?' · <span style="color:var(--warn)">Beschwerden</span>':""}</div></div><div style="text-align:right"><div class="sch">${schemeTxt(it)}</div><div class="rir">RIR ${it.rir} · ${restTxt(it.rest)}</div></div></button>`}).join("")}
-  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>`).join("")}
- ${(P.log||[]).length?`<details class="more card"><summary>Änderungen am Plan (${P.log.length})</summary><div class="stack small" style="gap:6px;padding-top:6px">${P.log.slice(0,15).map(l=>`<div class="kv" style="font-size:14px"><span class="muted">${dayLabel(l.d)}</span><span style="text-align:right">${esc(l.t)}</span></div>`).join("")}</div></details>`:""}
- <div class="row">${st&&!st.deload?`<button class="btn ghost grow" data-act="deloadNow">Deload-Woche starten</button>`:""}<button class="btn ghost grow" data-act="gen">Neu planen</button></div>
- <p class="small muted">RIR = Wiederholungen im Tank: wie viele saubere Wiederholungen nach dem Satz noch gegangen wären. Tippe eine Übung an, um sie zu tauschen oder Sätze, Wiederholungen, Pause und Gewicht zu ändern.</p></div>`;
-}
 function oldDays(P){return P.days.map((d,di)=>`<div class="card daycard"><div class="row" style="padding-bottom:6px"><h3 class="grow">${esc(d.name)}</h3><button class="btn sm ghost" data-act="start" data-d="${di}">Starten</button></div>${d.items.map(it=>{const ex=EXMAP[it.ex];return`<div class="exrow"><div class="grow">${esc(ex?ex.n:it.ex)}</div><div class="sch">${schemeTxt(it)}</div></div>`}).join("")}</div>`).join("")}
 
 function exHistory(exId,excludeId){return Object.values(WORKOUTS).filter(w=>w.id!==excludeId).sort((a,b)=>b.start-a.start).map(w=>{const e=(w.exercises||[]).find(x=>x.ex===exId&&x.sets&&x.sets.length);return e?{date:w.date,sets:e.sets}:null}).filter(Boolean)}
@@ -826,6 +745,36 @@ function lastSets(exId,excludeId){return exHistory(exId,excludeId)[0]||null}
 function daysSinceLast(){const ws=Object.values(WORKOUTS);if(!ws.length)return 0;return(Date.now()-Math.max(...ws.map(w=>w.start)))/864e5}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
 
+/* ---------- Aufwärmsätze & Scheibenrechner ---------- */
+function plateCfg(){const c=M.plates||{};return{bb:+c.bb||20,ez:+c.ez||10,have:Array.isArray(c.have)&&c.have.length?c.have.map(Number):PL.PLATES.slice()}}
+function barKg(ex){const t=PL.barFor(ex);if(!t)return 0;const c=plateCfg();return t==="ez"?c.ez:c.bb}
+/* Erste Grundübung eines Muskels in dieser Einheit bekommt Aufwärmsätze; spätere Übungen für denselben Muskel sind schon warm. */
+function needsWarmup(A,ei){const ex=EXMAP[A.exercises[ei].ex];if(!ex||!ex.c||ex.kind==="bw"||PL.isCardio(ex.id))return false;
+ return!A.exercises.slice(0,ei).some(o=>{const x=EXMAP[o.ex];return x&&x.m===ex.m})}
+function workKg(e){const s=(e.sets||[]).find(x=>x.kg>0);return s?s.kg:(e.rec&&e.rec.kg)||0}
+function warmInner(A,ei){const e=A.exercises[ei],ex=EXMAP[e.ex],W=workKg(e);
+ if(!W)return`<span class="muted">Trage dein Arbeitsgewicht ein, dann erscheinen hier die Aufwärmsätze.</span>`;
+ const ws=PL.warmupSets(ex,W,{bar:barKg(ex)});if(!ws.length)return`<span class="muted">Bei ${fmt(W,1)} kg reichen 1–2 leichte Sätze mit halbem Gewicht.</span>`;
+ return ws.map(w=>`<span class="wu num">${w.bar?"Stange":fmt(w.kg,1)+" kg"} × ${w.reps}</span>`).join("")}
+function warmBlock(A,ei){if(!needsWarmup(A,ei))return"";const ex=EXMAP[A.exercises[ei].ex];
+ return`<div class="warm"><div class="row" style="gap:6px"><span class="lbl grow">Aufwärmen · zählt nicht als Satz</span>${PL.barFor(ex)?`<button class="btn sm ghost" data-act="plates" data-ei="${ei}">Scheiben</button>`:""}</div><div class="wus" id="warm${ei}">${warmInner(A,ei)}</div></div>`}
+const PLCOL={25:"#E5484D",20:"#3B82F6",15:"#F2C14E",10:"#30A46C",5:"#E9EFFF",2.5:"#E5484D",1.25:"#8D9BBA"};
+function plateSvg(per){const H={25:84,20:84,15:72,10:60,5:46,2.5:36,1.25:30},Wd={25:12,20:11,15:10,10:9,5:7,2.5:6,1.25:5};
+ const cx=180,sleeve=36;let x=cx+sleeve,parts=[];per.forEach(p=>{const h=H[p]||30,w=Wd[p]||6;parts.push(`<rect x="${x}" y="${55-h/2}" width="${w}" height="${h}" rx="2" fill="${PLCOL[p]||"#8D9BBA"}"/>`,`<rect x="${2*cx-x-w}" y="${55-h/2}" width="${w}" height="${h}" rx="2" fill="${PLCOL[p]||"#8D9BBA"}"/>`);x+=w+1.5});
+ return`<svg viewBox="0 0 360 110" role="img" aria-label="Stange mit Scheiben"><rect x="20" y="51" width="320" height="8" rx="3" fill="#5B6B8C"/><rect x="${cx-sleeve-6}" y="47" width="6" height="16" rx="1" fill="#8D9BBA"/><rect x="${2*cx-(cx+sleeve)}" y="47" width="6" height="16" rx="1" fill="#8D9BBA"/>${parts.join("")}</svg>`}
+function plateOut(exId,kg){const ex=EXMAP[exId],c=plateCfg(),bar=barKg(ex),r=PL.plateCalc(kg,bar,c.have);
+ const lines=r.below?`<div class="status err">Unter dem Stangengewicht (${fmt(bar,1)} kg).</div>`:`${plateSvg(r.perSide)}
+  <div class="big num" style="text-align:center">${r.perSide.length?r.perSide.map(p=>fmt(p,2)).join(" + "):"nur Stange"}</div><div class="small muted" style="text-align:center">pro Seite · Stange ${fmt(bar,1)} kg</div>
+  ${r.exact?"":`<div class="status">Nicht genau steckbar. Nächstmöglich: <b class="num">${fmt(r.achieved,2)} kg</b></div>`}`;
+ const ws=PL.warmupSets(ex,kg,{bar});
+ return lines+(ws.length?`<div class="lbl" style="padding-top:8px">Aufwärmsätze</div><div class="card list" style="padding:2px 12px">${ws.map(w=>{const q=PL.plateCalc(w.kg,bar,c.have);return`<div class="li"><div class="n"><div class="num">${fmt(w.kg,1)} kg × ${w.reps}</div><div class="small muted">${w.bar?"leere Stange":"pro Seite: "+(q.perSide.map(p=>fmt(p,2)).join(" + ")||"–")}</div></div></div>`}).join("")}</div>`:"")}
+function plateSheet(exId,kg){const ex=EXMAP[exId];if(!ex||!PL.barFor(ex))return;const c=plateCfg(),t=PL.barFor(ex);SH={plates:exId};
+ openSheet(`${sheetHd("Scheibenrechner")}<div class="stack"><div class="small muted">${esc(ex.n)}</div>
+ <label><div class="lbl">Gesamtgewicht (kg)</div><input type="number" inputmode="decimal" step="0.5" id="plKg" value="${kg||""}" placeholder="z. B. 80"></label>
+ <div id="plOut">${kg?plateOut(exId,kg):""}</div>
+ <div class="lbl">${t==="ez"?"SZ-Stange":"Langhantel"}</div><div class="chips">${(t==="ez"?[7,8,10,12]:[10,15,20]).map(v=>`<button class="chip ${c[t]===v?"on":""}" data-act="plBar" data-t="${t}" data-v="${v}">${v} kg</button>`).join("")}</div>
+ <div class="lbl">Vorhandene Scheiben</div><div class="chips">${PL.PLATES.map(p=>`<button class="chip ${c.have.includes(p)?"on":""}" data-act="plHave" data-v="${p}">${fmt(p,2)}</button>`).join("")}</div>
+ <div class="small muted">Einstellungen gelten für alle Übungen mit dieser Stange.</div></div>`,SH)}
 function vTrain(){
  const A=M.active;
  if(!A){
@@ -849,6 +798,7 @@ function vTrain(){
   ${L?`<div class="small muted">Letztes Mal (${dayLabel(L.date)}): <span class="num" style="color:var(--ink)">${setsTxt(L.sets)}</span></div>`:""}
   ${rc?`<div class="hint ${rc.kind==="up"||rc.kind==="reps"?"up":""}">${esc(rc.text)}</div>`:""}
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
+  ${warmBlock(A,ei)}
   ${e.sets.map((s,si)=>setRow(ei,si,s,rc&&rc.reps)).join("")}
   <div class="row"><button class="addline grow" data-act="addSet" data-ei="${ei}">＋ Satz</button>${e.sets.some(x=>!x.done)?`<button class="btn sm primary" data-act="focus" data-ei="${ei}">Satz starten</button>`:""}</div></div>`}).join("")}
  <button class="btn ghost block" data-act="addWEx">＋ Übung hinzufügen</button>
@@ -866,29 +816,6 @@ function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.act
 function volume(w){return(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(x.kg||0)*(x.reps||0),0),0)}
 function e1rm(s){return(s.kg||0)*(1+((s.reps||0)+(s.rir||0))/30)}
 
-function vStatsOld(){
- const ws=Object.values(WORKOUTS).sort((a,b)=>a.start-b.start);
- const used=[...new Set(ws.flatMap(w=>(w.exercises||[]).map(e=>e.ex)))];
- if(!UI.statsEx||!used.includes(UI.statsEx))UI.statsEx=used[0]||null;
- let exPart=`<div class="empty small">Sobald du Trainings abschließt, siehst du hier deine Kraftkurve pro Übung.</div>`;
- if(UI.statsEx){const pts=ws.map(w=>{const e=(w.exercises||[]).find(x=>x.ex===UI.statsEx);if(!e||!e.sets.length)return null;return{x:w.date,y:Math.max(...e.sets.map(e1rm)),sets:e.sets}}).filter(Boolean);
-  exPart=`<select id="statsEx" data-act="statsEx" aria-label="Übung wählen">${used.map(id=>`<option value="${id}" ${id===UI.statsEx?"selected":""}>${esc(EXMAP[id]?EXMAP[id].n:id)}</option>`).join("")}</select>
-  ${lineChart(pts.slice(-20),"--p","kg")}
-  <div class="small muted">Geschätztes 1RM aus deinem besten Satz, mit RIR eingerechnet: Gewicht × (1 + (Wdh. + RIR) / 30).</div>
-  ${pts.slice(-5).reverse().map(p=>`<div class="kv"><span>${dayLabel(p.x)}</span><span class="num">${setsTxt(p.sets)}</span></div>`).join("")}`}
- const T=targets();const days=[];for(let i=13;i>=0;i--){const d=shiftDate(today(),-i);days.push({d,v:dayTotals(d).kcal})}
- const wts=(M.weights||[]).slice().sort((a,b)=>a.d<b.d?-1:1);
- const weekStart=shiftDate(today(),-((new Date().getDay()+6)%7));
- const wk=ws.filter(w=>w.date>=weekStart).length;
- return`<div class="section"><h2>Verlauf</h2>
- <div class="grid2"><div class="card"><div class="lbl">Trainings diese Woche</div><div class="num" style="font-size:32px">${wk}${M.plan?` <span class="muted" style="font-size:18px">/ ${M.plan.days.length}</span>`:""}</div></div><div class="card"><div class="lbl">Ø kcal (7 Tage)</div><div class="num" style="font-size:32px">${fmt(avgKcal(7))}</div></div></div>
- <div class="card stack"><h3>Kraftentwicklung</h3>${exPart}</div>
- <div class="card stack"><h3>Kalorien, 14 Tage</h3>${barChart(days,T.kcal)}</div>
- <div class="card stack"><h3>Körpergewicht</h3>${wts.length>1?lineChart(wts.slice(-30).map(w=>({x:w.d,y:w.kg})),"--f","kg"):""}
-  <div class="row"><input type="number" inputmode="decimal" step="0.1" id="wIn" placeholder="${fmt(M.profile.weight,1)} kg" aria-label="Gewicht heute"><button class="btn primary" data-act="addWeight">Eintragen</button></div>
-  ${wts.length?`<div class="small muted">Zuletzt: ${fmt(wts[wts.length-1].kg,1)} kg (${dayLabel(wts[wts.length-1].d)})</div>`:""}</div>
- </div>`;
-}
 function avgKcal(n){let s=0,c=0;for(let i=0;i<n;i++){const v=dayTotals(shiftDate(today(),-i)).kcal;if(v>0){s+=v;c++}}return c?s/c:0}
 function niceTicks(min,max,n=4){if(min===max){min-=1;max+=1}const span=max-min;const step0=span/n;const mag=Math.pow(10,Math.floor(Math.log10(step0)));const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>s>=step0);const lo=Math.floor(min/step)*step,hi=Math.ceil(max/step)*step;const t=[];for(let v=lo;v<=hi+1e-9;v+=step)t.push(+v.toFixed(6));return t}
 function lineChart(pts,col,unit){
@@ -940,7 +867,7 @@ function addSheet(meal,tab){
 function renderTab(prefill){
  const b=$("#tabBody");if(!b)return;
  if(SH.tab==="search"){b.innerHTML=`<div class="row"><input type="search" id="q" placeholder="Lebensmittel suchen" autocomplete="off" class="grow"><button class="btn" data-act="offSearch">Online</button></div><div class="list" id="offRes"></div><div class="list" id="res"></div>`;renderSearch("");}
- else if(SH.tab==="scan"){b.innerHTML=`<div class="live" id="liveBox" hidden><video id="liveVid" playsinline muted autoplay></video><div class="aim"></div><button class="stop" data-act="stopLive">Stopp</button></div>
+ else if(SH.tab==="scan"){if(!("BarcodeDetector" in window))loadZXing();b.innerHTML=`<div class="live" id="liveBox" hidden><video id="liveVid" playsinline muted autoplay></video><div class="aim"></div><button class="stop" data-act="stopLive">Stopp</button></div>
   <div class="scanbox" id="scanStart">${scanIconBig()}<div><b>Barcode scannen</b><div class="small muted">Halte den Barcode in den Rahmen. Die Nährwerte kommen von Open Food Facts.</div></div><button class="btn primary" data-act="liveScan">Kamera starten</button><button class="btn sm ghost" data-act="pickCam">Stattdessen Foto aufnehmen</button></div>
   <div class="row"><input type="text" inputmode="numeric" id="codeIn" placeholder="Barcode eintippen" aria-label="Barcode eintippen"><button class="btn" data-act="codeGo">Suchen</button></div><div id="scanStat"></div>`}
  else if(SH.tab==="photo"){b.innerHTML=photoTab();if(SH.ai&&SH.ai.result)updAiTot()}
@@ -984,10 +911,15 @@ function amountSheet(p,meal,entryIdx){
 }
 function updAmt(){const g=num($("#amt").value)||0,p=SH.prod,k=g/100;$("#amtSum").innerHTML=`<div class="row"><div class="grow num" style="font-size:28px">${fmt(p.kcal*k)} kcal</div><div class="mdots"><span class="p">${fmt(p.p*k,1)} P</span><span class="c">${fmt(p.c*k,1)} KH</span><span class="f">${fmt(p.f*k,1)} F</span></div></div>`}
 
+/* ZXing (Barcode-Erkennung für iPhone) wird erst geladen, wenn sie gebraucht wird: kein blockierendes Skript beim Start. */
+let ZXP=null;
+function loadZXing(){if(window.ZXing)return Promise.resolve(true);if(ZXP)return ZXP;
+ ZXP=new Promise(res=>{const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js";sc.async=true;sc.onload=()=>res(!!window.ZXing);sc.onerror=()=>{ZXP=null;res(false)};document.head.appendChild(sc)});return ZXP}
 /* barcode decoding: native BarcodeDetector first, ZXing as fallback */
 async function downscale(file,max){const url=URL.createObjectURL(file);try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*s);c.height=Math.round(img.naturalHeight*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);return c}finally{URL.revokeObjectURL(url)}}
 async function decodeBarcode(file){
  if("BarcodeDetector" in window){try{const bd=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128"]});const c=await downscale(file,1600);const r=await bd.detect(c);if(r&&r.length)return r[0].rawValue}catch(e){}}
+ await loadZXing();
  if(window.ZXing&&ZXing.BrowserMultiFormatReader){const hints=new Map();hints.set(ZXing.DecodeHintType.TRY_HARDER,true);hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E,ZXing.BarcodeFormat.CODE_128]);const reader=new ZXing.BrowserMultiFormatReader(hints);
   for(const size of [1400,900,2000]){try{const c=await downscale(file,size);const r=await reader.decodeFromImageUrl(c.toDataURL("image/jpeg",.92));if(r)return r.getText()}catch(e){}}}
  return null;
@@ -1023,6 +955,7 @@ async function startLiveScan(){
    const bd=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e"]});scanStat("Barcode in den Rahmen halten.");
    const me=SCAN;const loop=async()=>{if(SCAN!==me)return;try{const r=await bd.detect(video);if(r&&r.length&&SCAN===me){const c=r[0].rawValue;stopLiveScan();buzz();handleCode(c);return}}catch(e){}setTimeout(loop,120)};loop();return;
   }
+  scanStat("Scanner wird geladen …");await loadZXing();
   if(window.ZXing&&ZXing.BrowserMultiFormatReader){
    const hints=new Map();hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E]);
    const reader=new ZXing.BrowserMultiFormatReader(hints,150);SCAN={reader};const me=SCAN;scanStat("Barcode in den Rahmen halten.");
@@ -1369,7 +1302,20 @@ function moveTo(t){
 }
 const todayWD=()=>(new Date().getDay()+6)%7;
 function bestSet(exId){if(PL.isCardio(exId))return null;let best=null;Object.values(WORKOUTS).forEach(w=>(w.exercises||[]).forEach(e=>{if(e.ex!==exId)return;e.sets.forEach(s=>{const v=PL.e1rm(s);if(v>0&&(!best||v>best.v))best={v,kg:s.kg,reps:s.reps,date:w.date}})}));return best}
-function streakDays(){const ws=Object.values(WORKOUTS);const active=x=>ws.some(w=>w.date===x)||dayTotals(x).kcal>0;let n=0,d=today();if(!active(d))d=shiftDate(d,-1);let g=0;while(active(d)&&g++<800){n++;d=shiftDate(d,-1)}return n}
+/* Wochen-Serie: Wochen am Stück mit erreichtem Wochenziel. Die laufende Woche zählt mit, sobald das Ziel erreicht ist,
+   bricht die Serie aber nicht, solange sie noch läuft. */
+function weekGoal(){return M.plan&&M.plan.days&&M.plan.days.length?M.plan.days.length:3}
+function weekStreak(){const ws=Object.values(WORKOUTS);if(!ws.length)return 0;const goal=weekGoal(),cnt={};
+ ws.forEach(w=>{const d=new Date(w.date+"T12:00:00");const k=shiftDate(w.date,-((d.getDay()+6)%7));cnt[k]=(cnt[k]||0)+1});
+ let wk=weekStartISO(),n=0;if((cnt[wk]||0)>=goal)n++;wk=shiftDate(wk,-7);let g=0;
+ while((cnt[wk]||0)>=goal&&g++<520){n++;wk=shiftDate(wk,-7)}return n}
+/* Monatstrend: laufender Monat gegen dieselben Kalendertage des Vormonats (ein angefangener Monat wird nicht mit einem vollen verglichen).
+   In den ersten 6 Tagen gibt es keinen Trend, weil die Datenbasis zu klein ist. */
+function monthTrend(ws,now){now=now||new Date();const D=now.getDate();if(D<7)return null;
+ const pad=n=>String(n).padStart(2,"0"),cur=now.getFullYear()+"-"+pad(now.getMonth()+1);const pm=new Date(now.getFullYear(),now.getMonth()-1,1);
+ const prev=pm.getFullYear()+"-"+pad(pm.getMonth()+1),lim=pad(Math.min(D,new Date(now.getFullYear(),now.getMonth(),0).getDate()));
+ const sum=(k,last)=>ws.filter(w=>w.date.slice(0,7)===k&&w.date.slice(8,10)<=last).reduce((s,w)=>s+volume(w),0);
+ const a=sum(cur,pad(D)),b=sum(prev,lim);return b>0?Math.round((a-b)/b*100):null}
 function prsSince(since){const best={};let n=0;Object.values(WORKOUTS).sort((a,b)=>a.start-b.start).forEach(w=>(w.exercises||[]).forEach(e=>{if(PL.isCardio(e.ex))return;const b=Math.max(0,...e.sets.map(PL.e1rm));if(!b)return;if(best[e.ex]!=null&&b>best[e.ex]*1.001&&w.date>=since)n++;if(best[e.ex]==null||b>best[e.ex])best[e.ex]=b}));return n}
 
 /* ---------- Körpergrafik: Primär blau, Sekundär orange ---------- */
@@ -1416,15 +1362,16 @@ function vHome(){
  const tile=(ic,v,l)=>`<div class="card tile"><div class="ic">${ic}</div><div style="min-width:0"><div class="v">${v}</div><div class="l">${l}</div></div></div>`;
  return`<div class="section">
  <div class="greet"><div class="grow"><div class="hi">${hi}</div><div class="nm">${esc(name)} <span aria-hidden="true">👋</span></div><div class="small muted">Bereit, stärker zu werden?</div></div></div>
+ ${UI.storeFull?`<div class="banner warn" role="alert"><div class="grow"><b>Speicher voll.</b> Neue Einträge konnten nicht gespeichert werden. Exportiere jetzt eine Sicherung und lösche alte Ernährungstage.</div><button class="btn sm primary" data-act="exportData">Sichern</button></div>`:""}
  <div class="dash">
   <div class="card wring"><div class="rw">${(g=>`<svg viewBox="0 0 120 120">${g.defs}<circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="9"/>${pct>0?`<circle cx="60" cy="60" r="52" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-pct)}" ${g.f}/>`:""}</svg>`)(ringGlow("#2F8CFF",120))}<div class="c"><div class="big">${st.done}<span> / ${st.goal}</span></div><div class="small muted">Einheiten</div></div></div></div>
-  <div class="tiles">${tile(fire,st.streak,"Tage Serie")}${tile(barsI,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}${tile(cupI,st.pbs,"Bestleistungen (30 Tage)")}</div>
+  <div class="tiles">${tile(fire,st.streak,st.streak===1?"Woche in Folge":"Wochen in Folge")}${tile(barsI,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}${tile(cupI,st.pbs,"Bestleistungen (30 Tage)")}</div>
  </div>
  <div class="card wdots">${dots}</div>
  ${hero}
  <a class="card row" href="#ernaehrung" style="text-decoration:none;color:inherit"><div class="grow"><div class="lbl">Ernährung heute</div><div class="num" style="font-size:22px">${fmt(dayTotals(today()).kcal)} <span class="small muted">/ ${fmt(targets().kcal)} kcal</span></div><div class="bar" style="margin-top:6px"><i style="width:${Math.min(100,dayTotals(today()).kcal/(targets().kcal||1)*100)}%;background:var(--kcal)"></i></div></div>${svgI.chev}</a>
  <div class="card stack"><div class="row"><h3 class="grow">Leistungsentwicklung</h3>${st.trend!=null?`<span class="trend ${st.trend<0?"down":""}">${st.trend>0?"+":""}${st.trend} %</span>`:""}</div>
-  ${st.months.some(m=>m.v>0)?`<div class="chart">${monthBars(st.months)}</div><div class="small muted">Trainingsvolumen (Gewicht × Wiederholungen) pro Monat.</div>`:`<div class="empty small">Nach deinen ersten Trainings siehst du hier dein Volumen pro Monat.</div>`}</div>
+  ${st.months.some(m=>m.v>0)?`<div class="chart">${monthBars(st.months)}</div><div class="small muted">Trainingsvolumen (Gewicht × Wiederholungen) pro Monat${st.trend!=null?`. Prozent: bis heute im Vergleich zu denselben Tagen im Vormonat`:""}.</div>`:`<div class="empty small">Nach deinen ersten Trainings siehst du hier dein Volumen pro Monat.</div>`}</div>
  </div>`;
 }
 function monthBars(months){
@@ -1963,7 +1910,7 @@ function vProfile(){
  return`<div class="section">${pageHd("Profil",`<button class="iconbtn" data-act="profile" aria-label="Einstellungen">${svgI.gear}</button>`)}
  <div class="card stack"><div class="row"><div class="avatar">${esc(name.slice(0,1).toUpperCase())}</div><div class="grow"><h2>${esc(name)}</h2><div class="small muted">${goal?`Ziel: ${fmt(goal,1)} kg`:`${PL.GOALS[(M.plan&&M.plan.goal)||"muskel"]}`}</div></div>
   ${prog!=null?`<div class="pring">${(g=>`<svg viewBox="0 0 70 70">${g.defs}<circle cx="35" cy="35" r="30" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/><circle cx="35" cy="35" r="30" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-prog)}" transform="rotate(-90 35 35)" ${g.f}/></svg>`)(ringGlow("#2F8CFF",70))}<span>${Math.round(prog*100)} %</span></div>`:""}</div>
-  <div class="grid3"><div><div class="v">${fire} ${streakDays()}</div><div class="l">Tage Serie</div></div><div><div class="v">${ws.length}</div><div class="l">Workouts</div></div><div><div class="v">${prsSince(shiftDate(today(),-30))}</div><div class="l">neue PRs</div></div></div></div>
+  <div class="grid3"><div><div class="v">${fire} ${weekStreak()}</div><div class="l">Wochen in Folge</div></div><div><div class="v">${ws.length}</div><div class="l">Workouts</div></div><div><div class="v">${prsSince(shiftDate(today(),-30))}</div><div class="l">neue PRs</div></div></div></div>
  <div class="card list menu-list">
   ${item(ic('<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M8 11h8M8 15h5"/>'),"Trainingspläne",'href="#plan"')}
   ${item(ic('<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>'),"Übungen",'data-act="goLib"')}
@@ -2136,8 +2083,11 @@ document.addEventListener("click",e=>{
  case"confirmYes":{const f=SH.confirm;closeSheet();f&&f();break}
  case"addWEx":exPicker(id=>{M.active.exercises.push(newExEntry(id,null));persist("main");closeSheet();render()},"Übung hinzufügen");break;
  case"addSet":{const ex=M.active.exercises[+d.ei];const last=ex.sets[ex.sets.length-1];ex.sets.push({kg:last?last.kg:null,reps:null,rir:null,done:false});persist("main");render();break}
+ case"plates":{const e=M.active&&M.active.exercises[+d.ei];if(e)plateSheet(e.ex,workKg(e));break}
+ case"plBar":{M.plates=Object.assign(plateCfg(),{[d.t]:+d.v});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
+ case"plHave":{const c=plateCfg(),v=+d.v;let h=c.have.includes(v)?c.have.filter(x=>x!==v):[...c.have,v];if(!h.length){toast("Mindestens eine Scheibe muss vorhanden sein.");break}M.plates=Object.assign(c,{have:h});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
  case"exMenu":{const ei=+d.ei;SH={ei};const ex=M.active.exercises[ei];const cur=EXMAP[ex.ex];const alts=availEx().filter(e=>cur&&e.pat===cur.pat&&e.id!==cur.id);
-  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}${M.active.exercises.length>1?`<div class="row"><button class="btn ghost grow" data-act="wMv" data-n="-1" ${ei===0?"disabled":""}>↑ Nach oben</button><button class="btn ghost grow" data-act="wMv" data-n="1" ${ei===M.active.exercises.length-1?"disabled":""}>↓ Nach unten</button></div><div class="small muted">Gilt nur für dieses Training. Die Reihenfolge im Plan änderst du in der Einheit unter „Reihenfolge ändern“.</div>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
+  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}${M.active.exercises.length>1?`<div class="row"><button class="btn ghost grow" data-act="wMv" data-n="-1" ${ei===0?"disabled":""}>↑ Nach oben</button><button class="btn ghost grow" data-act="wMv" data-n="1" ${ei===M.active.exercises.length-1?"disabled":""}>↓ Nach unten</button></div><div class="small muted">Gilt nur für dieses Training. Die Reihenfolge im Plan änderst du in der Einheit unter „Reihenfolge ändern“.</div>`:""}${cur&&PL.barFor(cur)?`<button class="btn ghost block" data-act="plates" data-ei="${ei}">Scheibenrechner</button>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
  case"wSwap":{const ex=M.active.exercises[SH.ei];M.active.exercises[SH.ei]=Object.assign(newExEntry(d.id,ex.target),{});persist("main");closeSheet();render();break}
  case"rmSet":M.active.exercises[SH.ei].sets.pop();persist("main");closeSheet();render();break;
  case"rmWEx":M.active.exercises.splice(SH.ei,1);persist("main");closeSheet();render();break;
@@ -2162,7 +2112,9 @@ document.addEventListener("input",e=>{
  if(t.id==="q")renderSearch(t.value);
  else if(t.id==="amt")updAmt();
  else if(t.id==="exQ"){const q=t.value.trim().toLowerCase();document.querySelectorAll("#exRes .li").forEach(li=>li.hidden=!!q&&!li.dataset.s.includes(q));document.querySelectorAll("#exRes .lbl").forEach(l=>l.hidden=!!q)}
- else if(t.dataset.w&&M.active){const row=t.closest(".setrow");const s=M.active.exercises[+row.dataset.ei].sets[+row.dataset.si];s[t.dataset.w]=num(t.value);persist("main")}
+ else if(t.id==="plKg"&&SH&&SH.plates){const o=$("#plOut");if(o)o.innerHTML=num(t.value)?plateOut(SH.plates,num(t.value)):""}
+ else if(t.dataset.w&&M.active){const row=t.closest(".setrow");const ei=+row.dataset.ei;const s=M.active.exercises[ei].sets[+row.dataset.si];s[t.dataset.w]=num(t.value);persist("main");
+  if(t.dataset.w==="kg"){const w=$("#warm"+ei);if(w)w.innerHTML=warmInner(M.active,ei)}}
 });
 function filterGym(){const q=(UI.gymQ||"").trim().toLowerCase();document.querySelectorAll(".eqgrid .eq").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".eqgroup").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".eq")].some(b=>!b.hidden));document.querySelectorAll(".li.g80").forEach(b=>b.hidden=!!q&&!b.dataset.s.includes(q));document.querySelectorAll(".g80s").forEach(g=>g.hidden=!!q&&![...g.querySelectorAll(".li.g80")].some(b=>!b.hidden))}
 document.addEventListener("change",e=>{if(e.target.id==="libM"){UI.libM=e.target.value;render();return}if(e.target.dataset&&e.target.dataset.ai==="on"&&SH&&SH.ai){const row=e.target.closest(".airow");const it=SH.ai.result.items[+row.dataset.i];it.on=e.target.checked;row.classList.toggle("off",!it.on);updAiTot()}if(e.target.id==="statsEx"){UI.statsEx=e.target.value;render()}if(e.target.id==="itKg"&&SH&&SH.di!=null){const it=M.plan.days[SH.di].items[SH.ii];it.kg=num(e.target.value);persist("main");render()}});
