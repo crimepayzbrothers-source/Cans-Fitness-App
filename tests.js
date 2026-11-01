@@ -92,5 +92,20 @@ const brands = [...new Set(GER.MODELS.map(m => m.brand))].map(b => `${b} ${GER.M
 console.log("Modelle:", dupM.length || GER.MODELS.some(m => !m.name || !m.series) ? "FEHLER" : `ok (${brands})`); if (dupM.length) fails++;
 // gym80: jedes Modell hat Nummer, Namen, Serie
 const badG = GER.GYM80.filter(g => !g.nr || !g.name || !g.series); console.log("gym80-Datensätze vollständig:", badG.length ? "FEHLER" : `ok (${GER.GYM80.length} Modelle, ${GER.GYM80.filter(g => !g.eq.length).length} bewusst nicht zugeordnet)`); if (badG.length) fails++;
+// Scheibenrechner: jedes Gewicht im 2,5-kg-Raster 20–300 kg ist mit Standardscheiben genau steckbar; sonst nächstniedriger Wert
+let plBad = [];
+for (let kg = 20; kg <= 300; kg += 2.5) { const r = P.plateCalc(kg, 20); if (!r.exact || r.achieved !== kg) plBad.push(kg); }
+const odd = P.plateCalc(101, 20), few = P.plateCalc(100, 20, [20, 10]);
+const plOk = !plBad.length && !odd.exact && odd.achieved === 100 && few.exact && few.perSide.join() === "20,20";
+console.log("Scheibenrechner:", plOk ? "ok" : "FEHLER " + plBad.slice(0, 5)); if (!plOk) fails++;
+// Aufwärmsätze: steigend, unter dem Arbeitsgewicht, nur Grundübungen, Langhantel im 2,5-kg-Raster und >= Stange
+let wuBad = [];
+for (const e of P.EX) for (const W of [12, 25, 40, 62.5, 100, 180]) {
+  const ws = P.warmupSets(e, W);
+  if (!e.c || e.kind === "bw" || P.isCardio(e.id)) { if (ws.length) wuBad.push(e.id + " (Isolation)"); continue; }
+  const bar = P.barFor(e) ? (P.barFor(e) === "ez" ? 10 : 20) : 0;
+  ws.forEach((w, i) => { if (w.kg >= W || (i && w.kg <= ws[i - 1].kg) || w.reps < 1 || (bar && (w.kg < bar || Math.abs(w.kg / 2.5 - Math.round(w.kg / 2.5)) > 1e-9))) wuBad.push(`${e.id}@${W}`); });
+}
+console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "ok"); if (wuBad.length) fails++;
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 

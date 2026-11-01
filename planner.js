@@ -582,6 +582,48 @@ function nextDay(plan, workouts) {
   return (done[0].planDay + 1) % plan.days.length;
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor};
+/* ---------- Scheibenrechner ----------
+   Welche Scheiben pro Seite? Gierig von groß nach klein (bei den üblichen Scheiben 25/20/15/10/5/2,5/1,25 optimal).
+   Ist das Ziel nicht genau steckbar, wird das nächstniedrigere erreichbare Gewicht genannt. */
+const PLATES = [25, 20, 15, 10, 5, 2.5, 1.25];
+function barFor(ex) {
+  if (!ex || ex.kind !== "bb" || /^lm_/.test(ex.id)) return null;    // Landmine: einseitig beladen, kein Stangengewicht
+  return /(^|\+|\|)ez(\+|\||$)/.test(ex.need || "") ? "ez" : "bb";
+}
+function plateCalc(total, bar, plates) {
+  plates = (plates || PLATES).slice().sort((a, b) => b - a);
+  total = +total || 0; bar = +bar || 0;
+  if (total <= bar) return {perSide: [], achieved: bar, exact: Math.abs(total - bar) < 0.01, below: total < bar - 0.01};
+  let side = (total - bar) / 2 + 1e-9; const per = [];
+  for (const p of plates) while (side >= p) { per.push(p); side -= p; }
+  const achieved = Math.round((bar + 2 * per.reduce((a, b) => a + b, 0)) * 100) / 100;
+  return {perSide: per, achieved, exact: Math.abs(achieved - total) < 0.01, below: false};
+}
+
+/* ---------- Aufwärmsätze ----------
+   Ansteigende, kurze Sätze vor der ersten Grundübung eines Muskels: Gewicht steigt, Wiederholungen sinken,
+   damit Gelenke und Bewegungsmuster vorbereitet sind, ohne zu ermüden. Sie zählen nicht als Arbeitssätze. */
+function warmupSets(ex, work, opt) {
+  opt = opt || {};
+  work = +work || 0;
+  if (!ex || !ex.c || ex.kind === "bw" || ex.kind === "cardio" || work <= 0) return [];
+  const bar = barFor(ex) ? (+opt.bar || (barFor(ex) === "ez" ? 10 : 20)) : 0;
+  const step = bar ? 2.5 : (stepFor(ex, opt.level) || 2.5);
+  const down = v => Math.floor(v / step + 1e-9) * step;
+  let plan;
+  if (bar) plan = work >= 60 ? [[0.5, 8], [0.7, 5], [0.85, 3]] : work >= 40 ? [[0.55, 6], [0.8, 3]] : [[0.7, 5]];
+  else plan = work >= 20 ? [[0.5, 10], [0.75, 5]] : [[0.6, 8]];
+  const out = [];
+  if (bar && work >= bar * 1.5) out.push({kg: bar, reps: 10, bar: true});
+  for (const [pct, reps] of plan) {
+    const kg = Math.max(bar, down(work * pct));
+    if (kg <= 0 || kg >= work - 0.01) continue;
+    if (out.length && kg <= out[out.length - 1].kg + 0.01) continue;   // keine doppelten oder fallenden Stufen
+    out.push({kg, reps});
+  }
+  return out;
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
