@@ -160,11 +160,11 @@ function calView(){
  const byDay={};ws.forEach(w=>{const d=+w.date.slice(8);(byDay[d]=byDay[d]||[]).push(w)});
  const plannedWD=new Set((M.plan&&M.plan.opts&&M.plan.opts.weekdays)||[]);const t=today();
  let cells="";for(let i=0;i<first;i++)cells+=`<div></div>`;
- for(let d=1;d<=days;d++){const iso=key+"-"+String(d).padStart(2,"0");const wdI=(first+d-1)%7;cells+=`<div class="cd ${byDay[d]?"done":""} ${iso===t?"today":""} ${!byDay[d]&&iso>t&&plannedWD.has(wdI)?"plan":""}">${d}</div>`}
+ for(let d=1;d<=days;d++){const iso=key+"-"+String(d).padStart(2,"0");const wdI=(first+d-1)%7;cells+=byDay[d]?`<button class="cd done ${iso===t?"today":""}" data-act="calDay" data-day="${iso}" aria-label="${d}. – ${byDay[d].length} ${byDay[d].length===1?"Training":"Trainings"} ansehen">${d}</button>`:`<div class="cd ${iso===t?"today":""} ${iso>t&&plannedWD.has(wdI)?"plan":""}">${d}</div>`}
  return`<div class="card stack"><div class="row"><button class="iconbtn" data-act="calNav" data-n="-1" aria-label="Vormonat">‹</button><h3 class="grow" style="text-align:center">${m.toLocaleDateString("de-DE",{month:"long",year:"numeric"})}</h3><button class="iconbtn" data-act="calNav" data-n="1" aria-label="Nächster Monat">›</button></div>
  <div class="calgrid">${WD.map(d=>`<div class="ch">${d}</div>`).join("")}${cells}</div>
  <div class="small muted"><span class="legend done"></span> trainiert <span class="legend plan" style="margin-left:10px"></span> geplant</div></div>
- ${ws.length?`<div class="lbl">${ws.length} Trainings in diesem Monat</div>${ws.map(w=>`<div class="card row"><div class="grow"><b>${esc(w.dayName||"Training")}</b><div class="small muted">${dayLabel(w.date)} · ${(w.exercises||[]).reduce((s,e)=>s+e.sets.length,0)} Sätze · ${fmt(volume(w))} kg</div></div>${w.mood?`<span style="font-size:22px">${MOODS[w.mood-1]}</span>`:""}</div>`).join("")}`:`<div class="empty small">In diesem Monat noch kein Training.</div>`}`;
+ ${ws.length?`<div class="lbl">${ws.length} Trainings in diesem Monat · antippen zum Ansehen oder Löschen</div>${ws.map(w=>`<button class="card row wcard" data-act="wDetail" data-id="${esc(w.id)}"><div class="grow"><b>${esc(w.dayName||"Training")}</b><div class="small muted">${dayLabel(w.date)} · ${workSetCount(w)} Sätze · ${fmt(volume(w))} kg</div></div>${w.mood?`<span style="font-size:22px">${MOODS[w.mood-1]}</span>`:""}${svgI.chev}</button>`).join("")}`:`<div class="empty small">In diesem Monat noch kein Training.</div>`}`;
 }
 
 /* ---------- 3 Einheit-Vorschau ---------- */
