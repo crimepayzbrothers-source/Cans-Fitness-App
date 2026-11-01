@@ -157,6 +157,13 @@ nav.tabs a.on{color:var(--accent)}
 .recmap g[data-m]{stroke:rgba(0,0,0,.25);stroke-width:.6}
 .reclegend{display:flex;gap:14px;justify-content:center;color:var(--muted)}
 .reclegend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.mrow{display:grid;grid-template-columns:7.5em 1fr 4.6em;gap:8px;align-items:center;font-size:13px}
+.reportteaser{width:100%;border:0;color:inherit;font:inherit;cursor:pointer}
+.mrow .mn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow .mv{text-align:right}
+.mb{position:relative;height:10px;background:var(--surface2);border-radius:6px}
+.mb i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.mb b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.7}
 #plOut svg{width:100%;height:auto;display:block}
 #plOut .big{font-family:var(--display);font-weight:700;font-size:24px}
 .sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:2px}
@@ -444,7 +451,7 @@ svg.big{height:260px;width:auto}
 <input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
-<script src="planner.js?v=24"></script>
+<script src="planner.js?v=25"></script>
 <script src="ai.js?v=23"></script>
 <script src="figure.js?v=23"></script>
 <script src="geraete.js?v=2"></script>
@@ -1413,6 +1420,7 @@ function vHome(){
   <div class="tiles">${tile(fire,st.streak,st.streak===1?"Woche in Folge":"Wochen in Folge")}${tile(barsI,`${fmt(st.vol)} <span class="small muted">kg</span>`,"Volumen diese Woche")}${tile(cupI,st.pbs,"Bestleistungen (30 Tage)")}</div>
  </div>
  <div class="card wdots">${dots}</div>
+ ${defaultRepW()===-1?(r=>`<button class="card row reportteaser" data-act="openReport"><div class="grow" style="text-align:left"><div class="lbl">Dein Wochenbericht</div><div class="small">${r.cur.length} von ${r.goal} Einheiten · ${r.sets} harte Sätze · ${r.prs.length} ${r.prs.length===1?"Bestleistung":"Bestleistungen"}</div></div>${svgI.chev}</button>`)(weekReport(-1)):""}
  ${hero}
  <a class="card row" href="#ernaehrung" style="text-decoration:none;color:inherit"><div class="grow"><div class="lbl">Ernährung heute</div><div class="num" style="font-size:22px">${fmt(dayTotals(today()).kcal)} <span class="small muted">/ ${fmt(targets().kcal)} kcal</span></div><div class="bar" style="margin-top:6px"><i style="width:${Math.min(100,dayTotals(today()).kcal/(targets().kcal||1)*100)}%;background:var(--kcal)"></i></div></div>${svgI.chev}</a>
  ${recoveryCard()}
@@ -1890,7 +1898,7 @@ function periodRange(p){
 const pctTxt=(a,b)=>b>0?`<span class="trend ${a<b?"down":""}">${a>=b?"+":""}${Math.round((a-b)/b*100)} %</span>`:"";
 function vStats(){
  const tab=UI.statTab||"train";
- return`<div class="section">${pageHd("Statistiken")}${segBar(tab,[["train","Training"],["kraft","Kraft"],["body","Körper"]],"statTab")}${tab==="kraft"?statKraft():tab==="body"?statBody():statTrain()}</div>`;
+ return`<div class="section">${pageHd("Statistiken")}${segBar(tab,[["train","Training"],["report","Bericht"],["kraft","Kraft"],["body","Körper"]],"statTab")}${tab==="kraft"?statKraft():tab==="body"?statBody():tab==="report"?statReport():statTrain()}</div>`;
 }
 function statTrain(){
  const p=UI.period||"week",R0=periodRange(p),ws=Object.values(WORKOUTS);
@@ -1912,6 +1920,44 @@ function statTrain(){
   <div class="card"><div class="lbl">Bestleistungen</div><div class="num" style="font-size:22px">${prsSince(R0.a)}</div><div class="small muted">neue PRs</div></div>
   <div class="card"><div class="lbl">Kalorien</div><div class="num" style="font-size:22px">${kn?fmt(kc/kn):"–"} kcal</div><div class="small muted">Ø pro Tag</div></div>
  </div>`;
+}
+/* ---------- Wochenbericht ---------- */
+function defaultRepW(){const wd=(new Date().getDay()+6)%7;const prevA=shiftDate(weekStartISO(),-7);return wd<2&&Object.values(WORKOUTS).some(w=>w.date>=prevA&&w.date<weekStartISO())?-1:0}
+function weekReport(off){
+ const a=shiftDate(weekStartISO(),7*off),b=shiftDate(a,6),pa=shiftDate(a,-7),all=Object.values(WORKOUTS);
+ const cur=all.filter(w=>w.date>=a&&w.date<=b),prev=all.filter(w=>w.date>=pa&&w.date<a);
+ const P=M.plan,tg=P&&P.opts?PL.weeklyTargets(P.opts):null,done=PL.setsByMuscle(cur);
+ const best={},prs=[];all.slice().sort((x,y)=>x.start-y.start).forEach(w=>(w.exercises||[]).forEach(e=>{if(PL.isCardio(e.ex))return;const v=Math.max(0,...(e.sets||[]).filter(s=>s.type!=="warm").map(PL.e1rm));if(!v)return;
+  if(w.date>=a&&w.date<=b&&best[e.ex]!=null&&v>best[e.ex]*1.001){const ex=prs.find(x=>x.ex===e.ex);if(ex)ex.to=Math.max(ex.to,v);else prs.push({ex:e.ex,from:best[e.ex],to:v})}
+  if(w.date<=b&&(best[e.ex]==null||v>best[e.ex]))best[e.ex]=v}));
+ const hard=cur.flatMap(w=>(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).flatMap(e=>(e.sets||[]).filter(s=>s.reps>0&&s.type!=="warm")));
+ const rirs=hard.filter(s=>s.rir!=null).map(s=>s.rir),avgRir=rirs.length?rirs.reduce((x,y)=>x+y,0)/rirs.length:null;
+ return{a,b,cur,prev,tg,done,prs,sets:hard.length,avgRir,goal:weekGoal(),vol:cur.reduce((x,w)=>x+volume(w),0),pvol:prev.reduce((x,w)=>x+volume(w),0)}}
+function statReport(){
+ const off=UI.repW??defaultRepW(),r=weekReport(off),dl=d=>new Date(d+"T12:00:00").toLocaleDateString("de-DE",{day:"numeric",month:"numeric"});
+ const nav=`<div class="row"><button class="iconbtn" data-act="repW" data-n="${off-1}" aria-label="Vorige Woche">‹</button><h3 class="grow" style="text-align:center">${off===0?"Diese Woche":off===-1?"Letzte Woche":"Woche"} · ${dl(r.a)}–${dl(r.b)}</h3><button class="iconbtn" data-act="repW" data-n="${off+1}" ${off>=0?"disabled":""} aria-label="Nächste Woche">›</button></div>`;
+ if(!r.cur.length)return`${nav}<div class="empty small">In dieser Woche gibt es keine Trainings.</div>`;
+ const rows=r.tg?PL.MUSCLES.filter(m=>r.tg[m]>0||r.done[m]>0):[];
+ const bar=m=>{const d=r.done[m]||0,t=r.tg[m]||0,q=t?d/t:1,col=t&&q<.8?"var(--warn)":"var(--accent)";
+  return`<div class="mrow"><span class="mn">${PL.MUSN[m]}</span><div class="mb"><i style="width:${Math.min(100,q/1.5*100)}%;background:${col}"></i><b style="left:${100/1.5}%" title="Ziel"></b></div><span class="mv num">${fmt(d,1)}<span class="muted"> / ${t}</span></span></div>`};
+ const under=rows.filter(m=>r.tg[m]&&(r.done[m]||0)<r.tg[m]*.8).sort((x,y)=>(r.done[x]||0)/r.tg[x]-(r.done[y]||0)/r.tg[y]);
+ const tips=[];
+ if(off===0&&r.cur.length<r.goal)tips.push(`Noch ${r.goal-r.cur.length} ${r.goal-r.cur.length===1?"Einheit":"Einheiten"} bis zu deinem Wochenziel.`);
+ else if(r.cur.length<r.goal)tips.push(`${r.cur.length} von ${r.goal} Einheiten: Fehlende Einheiten lieber nachholen als Sätze an andere Tage hängen.`);
+ if(under.length)tips.push(`Unter dem Wochenziel: ${under.slice(0,3).map(m=>PL.MUSN[m]).join(", ")}. Für Muskelaufbau zählt vor allem die Zahl harter Sätze pro Woche.`);
+ if(r.avgRir!=null&&r.avgRir<1)tips.push(`Im Schnitt RIR ${fmt(r.avgRir,1)}: Sehr viele Sätze bis ans Versagen erhöhen die Ermüdung stärker als den Reiz. 1–3 Wdh. im Tank reichen meist.`);
+ if(r.avgRir!=null&&r.avgRir>3.5)tips.push(`Im Schnitt RIR ${fmt(r.avgRir,1)}: Die Sätze waren eher leicht. Näher an 1–3 Wdh. im Tank bringt mehr Reiz.`);
+ if(!tips.length)tips.push("Ziele erreicht. Weiter so; die App steigert die Gewichte automatisch, sobald du die Wiederholungen schaffst.");
+ return`${nav}
+ <div class="grid2">
+  <div class="card"><div class="lbl">Einheiten</div><div class="num" style="font-size:22px">${r.cur.length} <span class="small muted">/ ${r.goal}</span></div></div>
+  <div class="card"><div class="lbl">Harte Sätze</div><div class="num" style="font-size:22px">${r.sets}</div>${r.avgRir!=null?`<div class="small muted">Ø RIR ${fmt(r.avgRir,1)}</div>`:""}</div>
+  <div class="card"><div class="lbl">Volumen</div><div class="num" style="font-size:22px">${fmt(r.vol)} kg</div>${pctTxt(r.vol,r.pvol)}</div>
+  <div class="card"><div class="lbl">Neue Bestleistungen</div><div class="num" style="font-size:22px">${r.prs.length}</div></div>
+ </div>
+ <div class="card stack"><div class="lbl">Empfehlung</div>${tips.map(t=>`<div class="small">${esc(t)}</div>`).join("")}</div>
+ ${rows.length?`<div class="card stack"><div class="row"><div class="lbl grow">Sätze je Muskel</div><span class="small muted">Strich = Wochenziel</span></div>${rows.map(bar).join("")}<div class="small muted">Hilfsmuskeln zählen anteilig (z. B. Trizeps beim Bankdrücken zur Hälfte).</div></div>`:""}
+ ${r.prs.length?`<div class="card stack"><div class="lbl">Bestleistungen (geschätztes 1RM)</div>${r.prs.sort((x,y)=>y.to/y.from-x.to/x.from).slice(0,8).map(p=>`<div class="row small"><span class="grow">${esc((EXMAP[p.ex]||{}).n||p.ex)}</span><span class="num">${fmt(p.from,1)} → <b>${fmt(p.to,1)} kg</b></span></div>`).join("")}</div>`:""}`;
 }
 function rangeStart(r){const t=today();return r==="1m"?shiftDate(t,-30):r==="3m"?shiftDate(t,-91):r==="6m"?shiftDate(t,-182):r==="1y"?shiftDate(t,-365):"0000"}
 function statKraft(){
@@ -2129,6 +2175,8 @@ document.addEventListener("click",e=>{
  case"confirmYes":{const f=SH.confirm;closeSheet();f&&f();break}
  case"addWEx":exPicker(id=>{M.active.exercises.push(newExEntry(id,null));persist("main");closeSheet();render()},"Übung hinzufügen");break;
  case"addSet":{const ex=M.active.exercises[+d.ei];const last=ex.sets[ex.sets.length-1];ex.sets.push({kg:last?last.kg:null,reps:null,rir:null,done:false});persist("main");render();break}
+ case"openReport":UI.statTab="report";UI.repW=-1;location.hash="verlauf";break;
+ case"repW":{UI.repW=Math.min(0,+d.n);render();break}
  case"plates":{const e=M.active&&M.active.exercises[+d.ei];if(e)plateSheet(e.ex,workKg(e));break}
  case"plBar":{M.plates=Object.assign(plateCfg(),{[d.t]:+d.v});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
  case"plHave":{const c=plateCfg(),v=+d.v;let h=c.have.includes(v)?c.have.filter(x=>x!==v):[...c.have,v];if(!h.length){toast("Mindestens eine Scheibe muss vorhanden sein.");break}M.plates=Object.assign(c,{have:h});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}

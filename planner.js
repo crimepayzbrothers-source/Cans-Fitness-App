@@ -659,6 +659,18 @@ function hoursToFresh(workouts, m, now) {
   return 96;
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh};
+/* Harte Sätze je Muskel aus echten Trainings (Hilfsmuskeln anteilig, wie beim Plan). Aufwärmsätze und Ausdauer zählen nicht. */
+function setsByMuscle(workouts) {
+  const v = Object.fromEntries(MUSCLES.map(m => [m, 0]));
+  (workouts || []).forEach(w => (w.exercises || []).forEach(e => {
+    const ex = EXMAP[e.ex]; if (!ex || isCardio(ex.id)) return;
+    const n = (e.sets || []).filter(s => s.done !== false && (s.reps || 0) > 0 && s.type !== "warm").length; if (!n) return;
+    if (ex.m in v) v[ex.m] += n;
+    for (const [sm, k] of Object.entries(ex.s || {})) if (sm in v) v[sm] += n * k;
+  }));
+  return v;
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
