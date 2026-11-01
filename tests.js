@@ -128,5 +128,9 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
   const pl2 = mk(); const b2 = sum(pl2, mA); P.adapt(pl2, 0, wk, "leicht", () => 50, "2026-W45", {mfb: {[mA]: -1}});
   const ok2 = sum(pl2, mA) === b2 - 1;
   console.log("Rückmeldung je Muskel:", ok && ok2 ? "ok (" + log.join(" | ") + ")" : "FEHLER " + log.join(" | ")); if (!(ok && ok2)) fails++; }
+// Satztypen: Aufwärmsätze liefern kein 1RM; normale/Drop/Versagen schon; ältere Sätze ohne Typ unverändert
+{ const ok = P.e1rm({kg: 100, reps: 5, type: "warm"}) === 0 && P.e1rm({kg: 100, reps: 5}) > 100 && P.e1rm({kg: 60, reps: 10, type: "drop"}) > 60 && P.e1rm({kg: 80, reps: 8, type: "fail"}) === P.e1rm({kg: 80, reps: 8});
+  const rec = P.recommend("bench", {repMin: 6, repMax: 10, rir: 2, sets: 3}, [{sets: [{kg: 80, reps: 10, rir: 2}]}], {});
+  console.log("Satztypen:", ok && rec.kg >= 80 ? "ok" : "FEHLER"); if (!(ok && rec.kg >= 80)) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 

@@ -165,6 +165,10 @@ nav.tabs a.on{color:var(--accent)}
 .mfb{display:flex;flex-direction:column;gap:8px}
 .mfbrow{display:flex;flex-direction:column;gap:4px}
 .mfbrow>span{font-weight:600;font-size:14px}
+button.no{background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.setrow .no.st-warm{color:var(--warn)}.setrow .no.st-drop{color:var(--accent2)}.setrow .no.st-fail{color:var(--kcal)}
+.wex.ssg{border-left:3px solid var(--accent)}
+.sslbl{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent2)}
 .mb{position:relative;height:10px;background:var(--surface2);border-radius:6px}
 .mb i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
 .mb b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.7}
@@ -480,7 +484,7 @@ svg.big{height:260px;width:auto}
 <input type="file" id="aiGalIn" accept="image/*" hidden>
 <input type="file" id="importIn" accept="application/json,.json" hidden>
 
-<script src="planner.js?v=26"></script>
+<script src="planner.js?v=27"></script>
 <script src="ai.js?v=23"></script>
 <script src="figure.js?v=23"></script>
 <script src="geraete.js?v=2"></script>
@@ -780,7 +784,7 @@ function itemView(it,st){const v={...it,rir:PL.rirFor(it,st)};if(st&&st.deload)v
 function isoWeekKey(d){d=new Date((d||today())+"T12:00:00");const t=new Date(d);t.setDate(t.getDate()+3-((t.getDay()+6)%7));const w1=new Date(t.getFullYear(),0,4);return t.getFullYear()+"-W"+(1+Math.round(((t-w1)/864e5-3+((w1.getDay()+6)%7))/7))}
 function oldDays(P){return P.days.map((d,di)=>`<div class="card daycard"><div class="row" style="padding-bottom:6px"><h3 class="grow">${esc(d.name)}</h3><button class="btn sm ghost" data-act="start" data-d="${di}">Starten</button></div>${d.items.map(it=>{const ex=EXMAP[it.ex];return`<div class="exrow"><div class="grow">${esc(ex?ex.n:it.ex)}</div><div class="sch">${schemeTxt(it)}</div></div>`}).join("")}</div>`).join("")}
 
-function exHistory(exId,excludeId){return Object.values(WORKOUTS).filter(w=>w.id!==excludeId).sort((a,b)=>b.start-a.start).map(w=>{const e=(w.exercises||[]).find(x=>x.ex===exId&&x.sets&&x.sets.length);return e?{date:w.date,sets:e.sets}:null}).filter(Boolean)}
+function exHistory(exId,excludeId){return Object.values(WORKOUTS).filter(w=>w.id!==excludeId).sort((a,b)=>b.start-a.start).map(w=>{const e=(w.exercises||[]).find(x=>x.ex===exId&&x.sets&&x.sets.some(t=>t.type!=="warm"));return e?{date:w.date,sets:e.sets.filter(t=>t.type!=="warm")}:null}).filter(Boolean)}
 function lastSets(exId,excludeId){return exHistory(exId,excludeId)[0]||null}
 function daysSinceLast(){const ws=Object.values(WORKOUTS);if(!ws.length)return 0;return(Date.now()-Math.max(...ws.map(w=>w.start)))/864e5}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
@@ -795,13 +799,13 @@ function barKg(ex){const t=PL.barFor(ex);if(!t)return 0;const c=plateCfg();retur
 /* Erste Grundübung eines Muskels in dieser Einheit bekommt Aufwärmsätze; spätere Übungen für denselben Muskel sind schon warm. */
 function needsWarmup(A,ei){const ex=EXMAP[A.exercises[ei].ex];if(!ex||!ex.c||ex.kind==="bw"||PL.isCardio(ex.id))return false;
  return!A.exercises.slice(0,ei).some(o=>{const x=EXMAP[o.ex];return x&&x.m===ex.m})}
-function workKg(e){const s=(e.sets||[]).find(x=>x.kg>0);return s?s.kg:(e.rec&&e.rec.kg)||0}
+function workKg(e){const s=(e.sets||[]).find(x=>x.kg>0&&x.type!=="warm");return s?s.kg:(e.rec&&e.rec.kg)||0}
 function warmInner(A,ei){const e=A.exercises[ei],ex=EXMAP[e.ex],W=workKg(e);
  if(!W)return`<span class="muted">Trage dein Arbeitsgewicht ein, dann erscheinen hier die Aufwärmsätze.</span>`;
  const ws=PL.warmupSets(ex,W,{bar:barKg(ex)});if(!ws.length)return`<span class="muted">Bei ${fmt(W,1)} kg reichen 1–2 leichte Sätze mit halbem Gewicht.</span>`;
  return ws.map(w=>`<span class="wu num">${w.bar?"Stange":fmt(w.kg,1)+" kg"} × ${w.reps}</span>`).join("")}
-function warmBlock(A,ei){if(!needsWarmup(A,ei))return"";const ex=EXMAP[A.exercises[ei].ex];
- return`<div class="warm"><div class="row" style="gap:6px"><span class="lbl grow">Aufwärmen · zählt nicht als Satz</span>${PL.barFor(ex)?`<button class="btn sm ghost" data-act="plates" data-ei="${ei}">Scheiben</button>`:""}</div><div class="wus" id="warm${ei}">${warmInner(A,ei)}</div></div>`}
+function warmBlock(A,ei){if(!needsWarmup(A,ei)||A.exercises[ei].sets.some(s=>s.type==="warm"))return"";const ex=EXMAP[A.exercises[ei].ex];
+ return`<div class="warm"><div class="row" style="gap:6px"><span class="lbl grow">Aufwärmen · zählt nicht als Satz</span>${PL.barFor(ex)?`<button class="btn sm ghost" data-act="plates" data-ei="${ei}">Scheiben</button>`:""}<button class="btn sm ghost" data-act="warmIns" data-ei="${ei}">Eintragen</button></div><div class="wus" id="warm${ei}">${warmInner(A,ei)}</div></div>`}
 const PLCOL={25:"#E5484D",20:"#3B82F6",15:"#F2C14E",10:"#30A46C",5:"#E9EFFF",2.5:"#E5484D",1.25:"#8D9BBA"};
 function plateSvg(per){const H={25:84,20:84,15:72,10:60,5:46,2.5:36,1.25:30},Wd={25:12,20:11,15:10,10:9,5:7,2.5:6,1.25:5};
  const cx=180,sleeve=36;let x=cx+sleeve,parts=[];per.forEach(p=>{const h=H[p]||30,w=Wd[p]||6;parts.push(`<rect x="${x}" y="${55-h/2}" width="${w}" height="${h}" rx="2" fill="${PLCOL[p]||"#8D9BBA"}"/>`,`<rect x="${2*cx-x-w}" y="${55-h/2}" width="${w}" height="${h}" rx="2" fill="${PLCOL[p]||"#8D9BBA"}"/>`);x+=w+1.5});
@@ -836,8 +840,8 @@ function vTrain(){
  }
  const mins=Math.floor((Date.now()-A.start)/60000);
  return`<div class="section">
- <div class="row"><div class="grow"><h2>${esc(A.dayName)}</h2><div class="small muted"><span id="elapsed">${mins}</span> min · ${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done).length,0)} Sätze erledigt${A.deload?" · Deload":""}</div></div><button class="btn ghost" data-act="focus">Fokus</button><button class="btn primary" data-act="finish">Fertig</button></div>
- ${A.exercises.map((e,ei)=>{const ex=EXMAP[e.ex];const L=lastSets(e.ex,A.id);const tg=e.target;const rc=e.rec;return`<div class="card wex" data-ei="${ei}">
+ <div class="row"><div class="grow"><h2>${esc(A.dayName)}</h2><div class="small muted"><span id="elapsed">${mins}</span> min · ${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done&&x.type!=="warm").length,0)} Sätze erledigt${A.deload?" · Deload":""}</div></div><button class="btn ghost" data-act="focus">Fokus</button><button class="btn primary" data-act="finish">Fertig</button></div>
+ ${A.exercises.map((e,ei)=>{const ex=EXMAP[e.ex];const L=lastSets(e.ex,A.id);const tg=e.target;const rc=e.rec;const si0=ssInfo(A,ei);return`<div class="card wex ${si0?"ssg":""}" data-ei="${ei}">${si0?`<div class="sslbl">Supersatz ${esc(si0.g)} · ${si0.pos+1}/${si0.idx.length}${si0.pos<si0.idx.length-1?" · ohne Pause weiter":" · danach Pause"}</div>`:""}
   <div class="row">${exMini(ex,1)}<div class="grow"><h3><button data-act="exInfo" data-id="${e.ex}">${esc(ex?ex.n:e.ex)} ⓘ</button></h3><div class="small muted">${tg?`Ziel ${schemeTxt(tg)} · RIR ${tg.rir} · Pause ${restTxt(tg.rest)}`:"Freie Übung"}</div>${deviceLine(e.ex)}</div><button class="iconbtn" data-act="exMenu" data-ei="${ei}" aria-label="Optionen">⋯</button></div>
   ${L?`<div class="small muted">Letztes Mal (${dayLabel(L.date)}): <span class="num" style="color:var(--ink)">${setsTxt(L.sets)}</span></div>`:""}
   ${rc?`<div class="hint ${rc.kind==="up"||rc.kind==="reps"?"up":""}">${esc(rc.text)}</div>`:""}
@@ -851,13 +855,20 @@ function vTrain(){
 /* Ausdauergeräte: „Stufe“ und „Min“ statt kg und Wdh. */
 const ENDUR=/^(treadmill|crosstrainer|rower_c|stairclimber|bike|battle_rope)$/;
 function units(exId){if(!PL.isCardio(exId))return{kg:"kg",reps:"Wdh."};return ENDUR.test(exId)?{kg:"Stufe",reps:"Min"}:{kg:"kg",reps:"Wdh."}}
+/* Satztypen: Tippen auf die Satznummer wechselt Normal → Aufwärmen (A) → Drop-Satz (D) → bis Versagen (V) */
+const STYPES=[undefined,"warm","drop","fail"],STLBL={warm:"A",drop:"D",fail:"V"},STNAME={warm:"Aufwärmsatz",drop:"Drop-Satz",fail:"bis zum Versagen"};
+function setLabel(ei,si){const sets=M.active.exercises[ei].sets,s=sets[si];if(s.type&&STLBL[s.type])return STLBL[s.type];return sets.slice(0,si+1).filter(x=>x.type!=="warm").length}
+/* Supersätze: Übungen mit gleicher Gruppe (e.ss) werden abwechselnd trainiert; die Pause kommt erst nach der letzten Übung der Runde */
+function ssInfo(A,ei){const g=A.exercises[ei].ss;if(!g)return null;const idx=A.exercises.map((e,i)=>e.ss===g?i:-1).filter(i=>i>=0);return idx.length>1?{g,idx,pos:idx.indexOf(ei)}:null}
+function ssNext(A,ei,si){const inf=ssInfo(A,ei);if(!inf)return null;for(let k=inf.pos+1;k<inf.idx.length;k++){const e=A.exercises[inf.idx[k]];if(e.sets.some(x=>!x.done&&x.type!=="warm"))return inf.idx[k]}return null}
+function savePlanSS(A){const P=M.plan;if(!P||A.planId!==P.id||A.planDay==null||!P.days[A.planDay])return;P.days[A.planDay].items.forEach(it=>{const e=A.exercises.find(x=>x.ex===it.ex);if(e){if(e.ss)it.ss=e.ss;else delete it.ss}})}
 function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.active.exercises[ei].ex:"");return`<div class="setrow ${s.done?"done":""}" data-ei="${ei}" data-si="${si}">
- <div class="no">${si+1}</div>
+ <button class="no st-${s.type||"n"}" data-act="setType" aria-label="Satztyp ändern (Satz ${si+1})">${setLabel(ei,si)}</button>
  <label><div class="sub">${u.kg}</div><input type="number" inputmode="decimal" step="0.5" id="w${ei}_${si}_kg" data-w="kg" value="${s.kg??""}" placeholder="–"></label>
  <label><div class="sub">${u.reps}</div><input type="number" inputmode="numeric" id="w${ei}_${si}_reps" data-w="reps" value="${s.reps??""}" placeholder="${ph??"–"}"></label>
  <button class="ok" data-act="done" aria-label="Satz erledigt">✓</button>
  <div class="rirline"><span class="lbl">RIR</span>${[0,1,2,3,4,5].map(r=>`<button class="rb ${s.rir===r?"on":""}" data-act="rir" data-r="${r}">${r===5?"5+":r}</button>`).join("")}</div></div>`}
-function volume(w){return(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(x.kg||0)*(x.reps||0),0),0)}
+function volume(w){return(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(x.type==="warm"?0:(x.kg||0)*(x.reps||0)),0),0)}
 function e1rm(s){return(s.kg||0)*(1+((s.reps||0)+(s.rir||0))/30)}
 
 function avgKcal(n){let s=0,c=0;for(let i=0;i<n;i++){const v=dayTotals(shiftDate(today(),-i)).kcal;if(v>0){s+=v;c++}}return c?s/c:0}
@@ -1234,7 +1245,7 @@ function startWorkout(di){
  if(M.active){location.hash="#training";toast("Es läuft schon ein Training.");return}
  const P=M.plan,d=di>=0&&P?P.days[di]:null,st=planState();
  M.active={id:"w"+uid(),date:today(),start:Date.now(),dayName:d?d.name:"Freies Training",planDay:d?di:null,planId:d&&P.id||null,deload:!!(st&&st.deload),
-  exercises:d?d.items.filter(it0=>!it0.missing).map(it0=>{const it=itemView(it0,st);return newExEntry(it.ex,{sets:it.sets,repMin:it.repMin,repMax:it.repMax,rir:it.rir,rest:it.rest||90,kg:it.kg||null})}):[]};
+  exercises:d?d.items.filter(it0=>!it0.missing).map(it0=>{const it=itemView(it0,st);const ne=newExEntry(it.ex,{sets:it.sets,repMin:it.repMin,repMax:it.repMax,rir:it.rir,rest:it.rest||90,kg:it.kg||null});if(it0.ss)ne.ss=it0.ss;return ne}):[]};
  const skipped=d?d.items.filter(it=>it.missing).length:0;if(skipped)setTimeout(()=>toast(`${skipped} Übung${skipped>1?"en":""} übersprungen – Gerät nicht verfügbar`),400);
  persist("main");keepAwake();if(location.hash!=="#training")location.hash="#training";else render();
 }
@@ -1890,7 +1901,7 @@ function saveWorkingWeights(w){
 function summarySheet(w){
  SH={fb:w,pain:[],feel:null,mood:null,mfb:{}};
  const planned=M.plan&&w.planDay!=null&&M.plan.id===w.planId&&M.plan.days[w.planDay]?M.plan.days[w.planDay].items.length:w.exercises.length;
- const sets=w.exercises.reduce((s,e)=>s+e.sets.length,0),dur=Math.min(4*3600,Math.max(60,Math.round(((w.end||(w.start+3600e3))-w.start)/1000)));
+ const sets=w.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.type!=="warm").length,0),dur=Math.min(4*3600,Math.max(60,Math.round(((w.end||(w.start+3600e3))-w.start)/1000)));
  const kcal=Math.round(5*(+M.profile.weight||80)*dur/3600);
  const its=w.exercises.flatMap(e=>e.sets.filter(s=>s.rir!=null));const avg=its.length?its.reduce((a,s)=>a+s.rir,0)/its.length:null;
  const inten=avg==null?"–":avg<=1.2?"Hoch":avg<=2.2?"Mittel":"Moderat";
@@ -2217,17 +2228,22 @@ document.addEventListener("click",e=>{
  case"openReport":UI.statTab="report";UI.repW=-1;location.hash="verlauf";break;
  case"theme":try{localStorage.setItem("et-theme",d.t)}catch(e){}applyTheme();render();break;
  case"repW":{UI.repW=Math.min(0,+d.n);render();break}
+ case"setType":{const row=b.closest(".setrow");const ei=+row.dataset.ei,si=+row.dataset.si,st=M.active.exercises[ei].sets[si];const k=STYPES.indexOf(st.type);const nt=STYPES[(k+1)%STYPES.length];if(nt)st.type=nt;else delete st.type;persist("main");render();toast(nt?`Satz ${si+1}: ${STNAME[nt]}`:`Satz ${si+1}: normaler Satz`);break}
+ case"warmIns":{const A=M.active,e=A.exercises[+d.ei],ex=EXMAP[e.ex],W=workKg(e);if(!W){toast("Trage zuerst dein Arbeitsgewicht ein.");break}const ws=PL.warmupSets(ex,W,{bar:barKg(ex)});if(!ws.length){toast("Bei diesem Gewicht ist kein eigener Aufwärmsatz nötig.");break}
+  e.sets=ws.map(w=>({kg:w.kg,reps:w.reps,rir:null,done:false,type:"warm"})).concat(e.sets);persist("main");render();toast(`${ws.length} Aufwärmsätze eingetragen`);break}
+ case"ssOn":{const A=M.active,ei=+d.ei,a=A.exercises[ei],n=A.exercises[ei+1];const used=new Set(A.exercises.map(x=>x.ss).filter(Boolean));const g=a.ss||n.ss||"ABCDEFGH".split("").find(c=>!used.has(c))||"A";a.ss=g;n.ss=g;savePlanSS(A);persist("main");closeSheet();render();toast(`Supersatz ${g}: abwechselnd, Pause nach der Runde`);break}
+ case"ssOff":{const A=M.active,ei=+d.ei,g=A.exercises[ei].ss;delete A.exercises[ei].ss;const rest=A.exercises.filter(x=>x.ss===g);if(rest.length<2)rest.forEach(x=>delete x.ss);savePlanSS(A);persist("main");closeSheet();render();break}
  case"plates":{const e=M.active&&M.active.exercises[+d.ei];if(e)plateSheet(e.ex,workKg(e));break}
  case"plBar":{M.plates=Object.assign(plateCfg(),{[d.t]:+d.v});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
  case"plHave":{const c=plateCfg(),v=+d.v;let h=c.have.includes(v)?c.have.filter(x=>x!==v):[...c.have,v];if(!h.length){toast("Mindestens eine Scheibe muss vorhanden sein.");break}M.plates=Object.assign(c,{have:h});persist("main");const kg=num(($("#plKg")||{}).value);plateSheet(SH.plates,kg);break}
  case"exMenu":{const ei=+d.ei;SH={ei};const ex=M.active.exercises[ei];const cur=EXMAP[ex.ex];const alts=availEx().filter(e=>cur&&e.pat===cur.pat&&e.id!==cur.id);
-  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}${M.active.exercises.length>1?`<div class="row"><button class="btn ghost grow" data-act="wMv" data-n="-1" ${ei===0?"disabled":""}>↑ Nach oben</button><button class="btn ghost grow" data-act="wMv" data-n="1" ${ei===M.active.exercises.length-1?"disabled":""}>↓ Nach unten</button></div><div class="small muted">Gilt nur für dieses Training. Die Reihenfolge im Plan änderst du in der Einheit unter „Reihenfolge ändern“.</div>`:""}${cur&&PL.barFor(cur)?`<button class="btn ghost block" data-act="plates" data-ei="${ei}">Scheibenrechner</button>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
+  openSheet(`${sheetHd(esc(cur?cur.n:ex.ex))}<div class="stack">${alts.length?`<div class="lbl">Heute tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="wSwap" data-id="${a.id}">${exMini(a)}<div class="n">${esc(a.n)}</div></button>`).join("")}</div>`:""}${M.active.exercises.length>1?`<div class="row"><button class="btn ghost grow" data-act="wMv" data-n="-1" ${ei===0?"disabled":""}>↑ Nach oben</button><button class="btn ghost grow" data-act="wMv" data-n="1" ${ei===M.active.exercises.length-1?"disabled":""}>↓ Nach unten</button></div><div class="small muted">Gilt nur für dieses Training. Die Reihenfolge im Plan änderst du in der Einheit unter „Reihenfolge ändern“.</div>`:""}${M.active.exercises.length>1?(ex.ss&&ssInfo(M.active,ei)?`<button class="btn ghost block" data-act="ssOff" data-ei="${ei}">Aus Supersatz lösen</button>`:ei<M.active.exercises.length-1?`<button class="btn ghost block" data-act="ssOn" data-ei="${ei}">Supersatz mit „${esc(EXMAP[M.active.exercises[ei+1].ex].n)}“</button>`:""):""}${cur&&PL.barFor(cur)?`<button class="btn ghost block" data-act="plates" data-ei="${ei}">Scheibenrechner</button>`:""}<button class="btn ghost block" data-act="rmSet">Letzten Satz entfernen</button><button class="btn danger block" data-act="rmWEx">Übung entfernen</button></div>`,SH);break}
  case"wSwap":{const ex=M.active.exercises[SH.ei];M.active.exercises[SH.ei]=Object.assign(newExEntry(d.id,ex.target),{});persist("main");closeSheet();render();break}
  case"rmSet":M.active.exercises[SH.ei].sets.pop();persist("main");closeSheet();render();break;
  case"rmWEx":M.active.exercises.splice(SH.ei,1);persist("main");closeSheet();render();break;
  case"rir":case"done":{const row=b.closest(".setrow");const ei=+row.dataset.ei,si=+row.dataset.si;const s=M.active.exercises[ei].sets[si];
   if(a==="rir"){const r=+d.r;s.rir=s.rir===r?null:r;row.querySelectorAll(".rb").forEach(x=>x.classList.toggle("on",+x.dataset.r===s.rir))}
-  else{s.done=!s.done;if(s.done){s.kg=num(row.querySelector('[data-w="kg"]').value);s.reps=num(row.querySelector('[data-w="reps"]').value);if(s.reps==null){const tg=M.active.exercises[ei].target;if(tg){s.reps=tg.repMax;row.querySelector('[data-w="reps"]').value=s.reps}}startRest((M.active.exercises[ei].target&&M.active.exercises[ei].target.rest)||M.settings.rest||90);const nxt=M.active.exercises[ei].sets[si+1];if(nxt&&nxt.kg==null&&s.kg!=null){nxt.kg=s.kg;const ni=document.getElementById(`w${ei}_${si+1}_kg`);if(ni)ni.value=s.kg}}row.classList.toggle("done",s.done)}
+  else{s.done=!s.done;if(s.done){s.kg=num(row.querySelector('[data-w="kg"]').value);s.reps=num(row.querySelector('[data-w="reps"]').value);if(s.reps==null){const tg=M.active.exercises[ei].target;if(tg){s.reps=tg.repMax;row.querySelector('[data-w="reps"]').value=s.reps}}{const nx=ssNext(M.active,ei,si);if(s.type==="drop"){}else if(s.type==="warm")startRest(45);else if(nx!=null){stopRest&&R&&stopRest();toast(`Supersatz: weiter mit ${EXMAP[M.active.exercises[nx].ex].n}`);const el=document.querySelector(`.wex[data-ei="${nx}"]`);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}else startRest((M.active.exercises[ei].target&&M.active.exercises[ei].target.rest)||M.settings.rest||90)}const nxt=M.active.exercises[ei].sets[si+1];if(nxt&&nxt.kg==null&&s.kg!=null&&s.type!=="warm"){nxt.kg=s.kg;const ni=document.getElementById(`w${ei}_${si+1}_kg`);if(ni)ni.value=s.kg}}row.classList.toggle("done",s.done)}
   persist("main");break}
  case"restAdj":if(R){R.end+=(+d.n)*1000;R.beeped=false;tickRest()}break;
  case"restStop":stopRest();break;
