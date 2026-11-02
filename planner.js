@@ -493,7 +493,9 @@ function recommend(exId, target, history, ctx) {
     if (ctx.kg) return {kind: "new", kg: ctx.kg, reps: tg.repMax, text: `Startgewicht ${num(ctx.kg)} kg aus deinem Plan. Ziel: ${tg.repMin}–${tg.repMax} Wdh. mit ${tg.rir} Wdh. im Tank.`};
     return {kind: "new", kg: null, reps: tg.repMin, text: `Erstes Mal: wähle ein Gewicht, mit dem du ${tg.repMin}–${tg.repMax} saubere Wdh. schaffst und noch ${tg.rir} im Tank hast.`};
   }
-  const sets = last.sets.filter(s => s.reps > 0);
+  // bewertet werden nur Arbeitssätze: Aufwärm- und Drop-Sätze sind absichtlich leichter und würden die Steigerung blockieren
+  const all = last.sets.filter(s => s.reps > 0 && s.type !== "warm");
+  const sets = all.filter(s => s.type !== "drop").length ? all.filter(s => s.type !== "drop") : all;
   const kg = Math.max(...sets.map(s => s.kg || 0));
   const top = sets.filter(s => (s.kg || 0) === kg);
   const bw = ex && ex.kind === "bw" && !kg;
@@ -510,10 +512,19 @@ function recommend(exId, target, history, ctx) {
       const best = Math.max(...sets.map(s => s.reps));
       out = allTop ? {kind: "up", kg: null, reps: tg.repMax, text: `Alle Sätze am oberen Ende. Mach die Übung schwerer (langsamer, Zusatzgewicht) oder erhöhe auf ${tg.repMax + 3} Wdh.`}
                    : {kind: "hold", kg: null, reps: Math.min(best + 1, tg.repMax), text: `Ziel: je Satz 1 Wdh. mehr als letztes Mal (bestes: ${best}).`};
-    } else if (allTop) {
+    } else if (allTop || (kg > 0 && Math.max(...top.map(s => s.reps)) >= tg.repMax + 2)) {
+      // Steigerung: mindestens ein Gewichtsschritt; lag der beste Satz deutlich über dem Ziel, entsprechend mehr
+      // (aus dem geschätzten Maximum, höchstens +10 % auf einmal)
+      const bestTop = top.slice().sort((a, b) => e1rm(b) - e1rm(a))[0];
+      const max1 = e1rm(Object.assign({}, bestTop, {rir: bestTop.rir == null ? tg.rir : bestTop.rir}));
+      const mid = Math.round((tg.repMin + tg.repMax) / 2);
+      const byMax = Math.floor(max1 / (1 + (mid + tg.rir) / 30) / step + 1e-9) * step;
+      // nur alle Sätze übertroffen rechtfertigt einen größeren Sprung; ein einzelner frischer Satz gibt einen normalen Schritt
+      const up = allTop ? Math.max(kg + step, Math.min(byMax, Math.floor(kg * 1.10 / step + 1e-9) * step)) : kg + step;
       const jump = kg > 0 ? step / kg : 1;
       if (jump > 0.12 && tg.repMax < 25) out = {kind: "reps", kg, reps: tg.repMax + 2, text: `${num(step)} kg mehr wäre ein Sprung von ${Math.round(jump * 100)} %. Bleib bei ${num(kg)} kg und geh auf ${tg.repMax + 2} Wdh., dann steigern.`};
-      else out = {kind: "up", kg: roundTo(kg + step, 0.5), reps: tg.repMin, text: `Letztes Mal alle Sätze bei ${tg.repMax}+ Wdh. Heute ${num(kg + step)} kg, Ziel ${tg.repMin}+ Wdh.`};
+      else out = {kind: "up", kg: roundTo(up, 0.5), reps: tg.repMin, why: {kg, reps: bestTop.reps, max: Math.round(max1 * 10) / 10},
+        text: `Letztes Mal ${num(kg)} kg × ${bestTop.reps}${allTop ? " in allen Sätzen" : ""} (Ziel ${tg.repMin}–${tg.repMax}). Heute ${num(roundTo(up, 0.5))} kg (+${num(roundTo(up - kg, 0.5))} kg), Ziel ${tg.repMin}–${tg.repMax} Wdh.`};
     } else if (tooHard) {
       out = {kind: "down", kg: roundTo(kg * 0.95, 0.5), reps: tg.repMin, text: `Letztes Mal unter ${tg.repMin} Wdh. und zu nah am Versagen. Heute ${num(roundTo(kg * 0.95, 0.5))} kg.`};
     } else {
@@ -711,6 +722,30 @@ function mergeData(local, inc) {
   return {data: out, stats: st};
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle, mergeData};
+/* ---------- Anpassung der Folgesätze im laufenden Training ----------
+   Nach jedem Arbeitssatz: Lag er deutlich über dem Wiederholungsziel (oder mit viel mehr Reserve als geplant),
+   steigt das Gewicht der nächsten Sätze; lag er darunter oder zu nah am Versagen, sinkt es. Grundlage ist das
+   geschätzte Maximum aus Gewicht, Wiederholungen und RIR (Epley). Die nächsten Sätze zielen auf das obere Ende
+   des Bereichs mit dem geplanten RIR, gerundet auf den Gewichtsschritt des Geräts, höchstens ±10 % auf einmal.
+   Rückgabe null = Gewicht passt. */
+function nextSetKg(exId, target, set, level) {
+  const ex = EXMAP[exId]; if (!ex || ex.kind === "bw" || isCardio(exId) || !set || set.type === "warm" || set.type === "drop") return null;
+  const tg = target || {repMin: 8, repMax: 12, rir: 2}, kg = +set.kg || 0, reps = +set.reps || 0; if (!kg || !reps) return null;
+  const rir = set.rir == null ? tg.rir : set.rir, step = stepFor(ex, level) || 2.5;
+  const max1 = kg * (1 + (reps + rir) / 30), fl = v => Math.floor(v / step + 1e-9) * step;
+  const easy = reps > tg.repMax || (reps >= tg.repMax && rir >= tg.rir + 2);
+  const hard = reps < tg.repMin || (rir < tg.rir - 1 && reps <= tg.repMin);
+  let to = null, why = "";
+  if (easy) {
+    const t = Math.min(fl(max1 / (1 + (tg.repMax + tg.rir) / 30)), fl(kg * 1.10));
+    if (t >= kg + step) { to = t; why = `${reps} Wdh.${set.rir != null ? ` mit RIR ${rir}` : ""} liegen über dem Ziel ${tg.repMin}–${tg.repMax} (RIR ${tg.rir})`; }
+  } else if (hard) {
+    const t = Math.max(fl(max1 / (1 + (tg.repMin + tg.rir) / 30)), fl(kg * 0.90));
+    if (t <= kg - step && t > 0) { to = t; why = `${reps} Wdh.${set.rir != null ? ` mit RIR ${rir}` : ""} liegen unter dem Ziel ${tg.repMin}–${tg.repMax} (RIR ${tg.rir})`; }
+  }
+  return to == null ? null : {kg: Math.round(to * 100) / 100, why, max: Math.round(max1 * 10) / 10};
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle, mergeData, nextSetKg};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);
