@@ -139,5 +139,14 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
   const ok = Object.keys(d.WORKOUTS).length === 3 && d.WORKOUTS.w2.v === "neu" && d.DAYS["2026-10-01"].meals.fr.length === 2 && d.DAYS["2026-10-01"].water === 2 && d.DAYS["2026-10-02"] && d.M.plan.id === "pA" && d.M.weights.length === 2 && d.M.weights[0].kg === 80 && d.M.products.y === 2 && !d.M.active && A.WORKOUTS.w3 === undefined;
   const again = P.mergeData(d, B).stats; const ok2 = again.workouts === 0 && again.entries === 0 && again.days === 0;
   console.log("Zusammenführen:", ok && ok2 ? "ok " + JSON.stringify(r.stats) : "FEHLER " + JSON.stringify(r.stats)); if (!(ok && ok2)) fails++; }
+// Progression: Folgesätze im Training und Steigerung fürs nächste Mal
+{ const tg = {repMin: 6, repMax: 10, rir: 3, sets: 3};
+  const a = P.nextSetKg("bench", tg, {kg: 100, reps: 12, rir: 3}), b = P.nextSetKg("bench", tg, {kg: 100, reps: 8, rir: 3}), c = P.nextSetKg("bench", tg, {kg: 100, reps: 4, rir: 1}),
+        d = P.nextSetKg("bench", tg, {kg: 100, reps: 30, rir: 5}), w = P.nextSetKg("bench", tg, {kg: 40, reps: 20, type: "warm"}), x = P.nextSetKg("bench", tg, {kg: 100, reps: 12, rir: 0});
+  const r1 = P.recommend("bench", tg, [{sets: [{kg: 100, reps: 12, rir: 3}, {kg: 100, reps: 9}, {kg: 100, reps: 8}]}], {});
+  const r2 = P.recommend("bench", tg, [{sets: [{kg: 100, reps: 13, rir: 3}, {kg: 100, reps: 13, rir: 3}, {kg: 100, reps: 12, rir: 3}]}], {});
+  const r3 = P.recommend("bench", tg, [{sets: [{kg: 100, reps: 10, rir: 3}, {kg: 100, reps: 10, rir: 3}, {kg: 80, reps: 5, rir: 0, type: "drop"}]}], {});
+  const ok = a && a.kg === 102.5 && b === null && c && c.kg === 90 && d && d.kg === 110 && w === null && x === null && r1.kg === 102.5 && r2.kg === 110 && r3.kind === "up";
+  console.log("Progression:", ok ? "ok (100×12 → nächste Sätze 102,5 kg; nächstes Mal bis +10 %)" : "FEHLER " + JSON.stringify({a, b, c, d, r1: r1.kg, r2: r2.kg, r3: r3.kind})); if (!ok) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 

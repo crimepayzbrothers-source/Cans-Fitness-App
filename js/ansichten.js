@@ -531,6 +531,13 @@ function saveWorkingWeights(w){
  if(n)(P.log=P.log||[]).unshift({d:today(),t:`Gewichte und RIR von ${n} Übungen gespeichert (${P.days[w.planDay].name})`});
  return n;
 }
+/* Vorschau fürs nächste Mal: macht die Steigerung nachvollziehbar (gleiche Logik wie beim Trainingsstart) */
+function nextPreview(w){const P=M.plan,lvl=(P&&P.opts&&P.opts.level)||"int";
+ const rows=w.exercises.filter(e=>!PL.isCardio(e.ex)).map(e=>{const it=P&&w.planId===P.id&&w.planDay!=null&&P.days[w.planDay]?P.days[w.planDay].items.find(x=>x.ex===e.ex):null;
+  const tg=it?{sets:it.sets,repMin:it.repMin,repMax:it.repMax,rir:it.rir}:(e.target||null);const r=PL.recommend(e.ex,tg,exHistory(e.ex),{level:lvl});return{e,r}}).filter(x=>x.r);
+ if(!rows.length)return"";const ch=rows.filter(x=>x.r.kind==="up"||x.r.kind==="down"||x.r.kind==="reps"),hold=rows.length-ch.length;
+ return`<div class="card stack"><div class="lbl">Nächstes Mal</div>${ch.map(x=>`<div class="row small"><span class="grow">${esc((EXMAP[x.e.ex]||{}).n||x.e.ex)}</span><b class="num" style="color:${x.r.kind==="down"?"var(--warn)":"var(--f)"}">${x.r.kind==="reps"?`${x.r.reps} Wdh.`:`${fmt(x.r.kg,2)} kg`}</b></div><div class="small muted">${esc(x.r.text.replace(/\bHeute\b/,"Nächstes Mal"))}</div>`).join("")}
+ ${hold?`<div class="small muted">${hold} ${hold===1?"Übung bleibt":"Übungen bleiben"} beim Gewicht, Ziel: 1 Wdh. mehr pro Satz. Gesteigert wird, sobald alle Sätze das obere Ende des Wiederholungsbereichs erreichen.</div>`:""}</div>`}
 function summarySheet(w){
  SH={fb:w,pain:[],feel:null,mood:null,mfb:{}};
  const planned=M.plan&&w.planDay!=null&&M.plan.id===w.planId&&M.plan.days[w.planDay]?M.plan.days[w.planDay].items.length:w.exercises.length;
@@ -543,6 +550,7 @@ function summarySheet(w){
  const adaptive=P&&P.v===2&&w.planId===P.id&&!w.deload;
  openSheet(`<div class="stack"><div class="donehero">${bodySvg(new Set(w.exercises.map(e=>EXMAP[e.ex]&&EXMAP[e.ex].m).filter(Boolean)),null,"fig done")}<h1>Training abgeschlossen!</h1><div class="muted">Starke Leistung, ${esc((M.profile&&M.profile.name)||"Can")}!</div></div>
  <div class="tiles3">${tile(`${w.exercises.length}/${planned}`,"Übungen")}${tile(sets,"Sätze")}${tile(fmt(volume(w))+" kg","Gesamtvolumen")}${tile(restTxtClock(Math.floor(dur/60))+"",`Dauer (h:min)`)}${tile("≈ "+kcal+" kcal","verbraucht")}${tile(inten,"Intensität")}</div>
+ ${nextPreview(w)}
  ${adaptive?`<div class="lbl">Wie anstrengend war es?</div><div class="chips">${[["leicht","Zu leicht"],["passt","Genau richtig"],["hart","Zu hart"]].map(([k,l])=>`<button class="chip" data-act="sFeel" data-v="${k}">${l}</button>`).join("")}</div><div class="small muted">Steuert die Satzzahl dieser Einheit in den nächsten Wochen.</div>`:""}
  ${adaptive?(ms=>ms.length?`<div class="lbl">Je Muskel (optional, genauer)</div><div class="mfb">${ms.map(m=>`<div class="mfbrow"><span>${PL.MUSN[m]}</span><div class="chips">${[[1,"Mehr ging"],[0,"Passend"],[-1,"Zu viel / Muskelkater"]].map(([v,l])=>`<button class="chip" data-act="mFb" data-m="${m}" data-v="${v}">${l}</button>`).join("")}</div></div>`).join("")}</div><div class="small muted">„Zu viel / Muskelkater“: Die Einheit war zu viel oder der Muskelkater vom letzten Mal hielt bis heute an. Pro Muskel ändert sich höchstens 1 Satz pro Woche.</div>`:"")([...new Set(w.exercises.map(e=>EXMAP[e.ex]&&!PL.isCardio(e.ex)?EXMAP[e.ex].m:null).filter(Boolean))].slice(0,6)):""}
  <div class="lbl">Wie war dein Training?</div><div class="moods">${MOODS.map((m,i)=>`<button class="mood" data-act="sMood" data-v="${i+1}" aria-label="Stimmung ${i+1} von 5">${m}</button>`).join("")}</div>

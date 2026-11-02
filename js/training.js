@@ -119,6 +119,15 @@ function deleteWorkout(id){const w=WORKOUTS[id];if(!w)return;const copy=clone(w)
  if(M.plan){M.plan.log=M.plan.log||[];M.plan.log.unshift({d:today(),t:`Training „${w.dayName||"Training"}“ vom ${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE")} gelöscht`});M.plan.log=M.plan.log.slice(0,40)}
  persist("workouts/"+id,true);persist("main");closeSheet();render();
  toastUndo("Training gelöscht",()=>{WORKOUTS[id]=copy;if(planBefore&&M.plan&&M.plan.id===planBefore.id)M.plan=planBefore;persist("workouts/"+id,true);persist("main");render();toast("Training wiederhergestellt")})}
+/* Folgesätze nach einem Arbeitssatz anpassen (Logik: PL.nextSetKg). Sätze, deren Gewicht du selbst eingetippt hast, bleiben unangetastet. */
+function adjustFollowing(ei,si){const A=M.active,e=A.exercises[ei],s=e.sets[si];const lvl=(M.plan&&M.plan.opts&&M.plan.opts.level)||"int";
+ const r=PL.nextSetKg(e.ex,e.target,s,lvl);if(!r)return null;
+ const idx=e.sets.map((x,i)=>i).filter(i=>i>si&&!e.sets[i].done&&e.sets[i].type!=="warm"&&e.sets[i].type!=="drop"&&!e.sets[i].manual);
+ if(!idx.length)return null;idx.forEach(i=>e.sets[i].kg=r.kg);
+ const nr=i=>e.sets.slice(0,i+1).filter(x=>x.type!=="warm").length;
+ e.adj={from:s.kg,to:r.kg,why:r.why,max:r.max,sets:idx.map(nr)};return e.adj}
+function adjLine(e){const a=e.adj;if(!a)return"";const up=a.to>a.from,ss=a.sets.length>1?`Sätze ${a.sets[0]}–${a.sets[a.sets.length-1]}`:`Satz ${a.sets[0]}`;
+ return`<div class="hint ${up?"up":""}">${up?"↑":"↓"} ${ss} angepasst auf <b class="num">${fmt(a.to,2)} kg</b> (${up?"+":"−"}${fmt(Math.abs(a.to-a.from),2)} kg). ${esc(a.why)}; geschätztes Maximum ${fmt(a.max,1)} kg.</div>`}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
 
 /* ---------- Design: dunkel, hell oder wie das System ---------- */
@@ -179,6 +188,7 @@ function vTrain(){
   ${L?`<div class="small muted">Letztes Mal (${dayLabel(L.date)}): <span class="num" style="color:var(--ink)">${setsTxt(L.sets)}</span></div>`:""}
   ${rc?`<div class="hint ${rc.kind==="up"||rc.kind==="reps"?"up":""}">${esc(rc.text)}</div>`:""}
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
+  ${adjLine(e)}
   ${warmBlock(A,ei)}
   ${e.sets.map((s,si)=>setRow(ei,si,s,rc&&rc.reps)).join("")}
   ${ei===0&&e.sets.length&&!swipeKnown()?`<div class="small muted swipehint">Tipp: Satz nach links wischen zum Löschen.</div>`:""}
