@@ -448,3 +448,12 @@ button.cd{border:0;cursor:pointer;padding:0;font-family:var(--display);font-weig
 /* Größere Tippflächen (mind. 40 px): Satznummer zum Wechseln des Satztyps, Übungsname zum Öffnen der Anleitung */
 button.no{min-width:36px;min-height:44px;display:flex;align-items:center}
 .wex h3 button{min-height:40px}
+
+/* Satz nach links wischen zum Löschen */
+.setswipe{position:relative;border-radius:12px}
+.setswipe>.setrow{position:relative;z-index:1;touch-action:pan-y;will-change:transform}
+.setswipe>.setdel{position:absolute;inset:8px 0 0 0;border-radius:12px;background:rgba(229,72,77,.25);color:#fff;display:none;align-items:center;justify-content:flex-end;padding-right:18px;font-weight:600;letter-spacing:.02em}
+.setswipe.swiping>.setdel{display:flex}
+.setswipe.armed>.setdel{background:#E5484D}
+.setswipe.swiping>.setrow{background:var(--surface);border-radius:12px}
+.swipehint{text-align:center;padding-top:2px}

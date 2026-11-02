@@ -171,6 +171,7 @@ function vTrain(){
   </div>`;
  }
  const mins=Math.floor((Date.now()-A.start)/60000);
+ if(UI.wSort&&A.exercises.length>1)return`<div class="section"><h2>${esc(A.dayName)}</h2>${wSortList(A)}</div>`;
  return`<div class="section">
  <div class="row"><div class="grow"><h2>${esc(A.dayName)}</h2><div class="small muted"><span id="elapsed">${mins}</span> min · ${A.exercises.reduce((s,e)=>s+e.sets.filter(x=>x.done&&x.type!=="warm").length,0)} Sätze erledigt${A.deload?" · Deload":""}</div></div><button class="btn ghost" data-act="focus">Fokus</button><button class="btn primary" data-act="finish">Fertig</button></div>
  ${A.exercises.map((e,ei)=>{const ex=EXMAP[e.ex];const L=lastSets(e.ex,A.id);const tg=e.target;const rc=e.rec;const si0=ssInfo(A,ei);return`<div class="card wex ${si0?"ssg":""}" data-ei="${ei}">${si0?`<div class="sslbl">Supersatz ${esc(si0.g)} · ${si0.pos+1}/${si0.idx.length}${si0.pos<si0.idx.length-1?" · ohne Pause weiter":" · danach Pause"}</div>`:""}
@@ -180,7 +181,9 @@ function vTrain(){
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
   ${warmBlock(A,ei)}
   ${e.sets.map((s,si)=>setRow(ei,si,s,rc&&rc.reps)).join("")}
+  ${ei===0&&e.sets.length&&!swipeKnown()?`<div class="small muted swipehint">Tipp: Satz nach links wischen zum Löschen.</div>`:""}
   <div class="row"><button class="addline grow" data-act="addSet" data-ei="${ei}">＋ Satz</button>${e.sets.some(x=>!x.done)?`<button class="btn sm primary" data-act="focus" data-ei="${ei}">Satz starten</button>`:""}</div></div>`}).join("")}
+ ${A.exercises.length>1?`<button class="btn ghost block" data-act="wSortOn">↕ Reihenfolge ändern</button>`:""}
  <button class="btn ghost block" data-act="addWEx">＋ Übung hinzufügen</button>
  <button class="btn danger block" data-act="cancelW">Training verwerfen</button></div>`;
 }
@@ -194,12 +197,12 @@ function setLabel(ei,si){const sets=M.active.exercises[ei].sets,s=sets[si];if(s.
 function ssInfo(A,ei){const g=A.exercises[ei].ss;if(!g)return null;const idx=A.exercises.map((e,i)=>e.ss===g?i:-1).filter(i=>i>=0);return idx.length>1?{g,idx,pos:idx.indexOf(ei)}:null}
 function ssNext(A,ei,si){const inf=ssInfo(A,ei);if(!inf)return null;for(let k=inf.pos+1;k<inf.idx.length;k++){const e=A.exercises[inf.idx[k]];if(e.sets.some(x=>!x.done&&x.type!=="warm"))return inf.idx[k]}return null}
 function savePlanSS(A){const P=M.plan;if(!P||A.planId!==P.id||A.planDay==null||!P.days[A.planDay])return;P.days[A.planDay].items.forEach(it=>{const e=A.exercises.find(x=>x.ex===it.ex);if(e){if(e.ss)it.ss=e.ss;else delete it.ss}})}
-function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.active.exercises[ei].ex:"");return`<div class="setrow ${s.done?"done":""}" data-ei="${ei}" data-si="${si}">
+function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.active.exercises[ei].ex:"");return`<div class="setswipe"><div class="setdel" aria-hidden="true">Löschen</div><div class="setrow ${s.done?"done":""}" data-ei="${ei}" data-si="${si}">
  <button class="no st-${s.type||"n"}" data-act="setType" aria-label="Satztyp ändern (Satz ${si+1})">${setLabel(ei,si)}</button>
  <label><div class="sub">${u.kg}</div><input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="w${ei}_${si}_kg" data-w="kg" value="${inNum(s.kg)}" placeholder="–"></label>
  <label><div class="sub">${u.reps}</div><input type="number" inputmode="numeric" id="w${ei}_${si}_reps" data-w="reps" value="${s.reps??""}" placeholder="${ph??"–"}"></label>
  <button class="ok" data-act="done" aria-label="Satz erledigt">✓</button>
- <div class="rirline"><span class="lbl">RIR</span>${[0,1,2,3,4,5].map(r=>`<button class="rb ${s.rir===r?"on":""}" data-act="rir" data-r="${r}">${r===5?"5+":r}</button>`).join("")}</div></div>`}
+ <div class="rirline"><span class="lbl">RIR</span>${[0,1,2,3,4,5].map(r=>`<button class="rb ${s.rir===r?"on":""}" data-act="rir" data-r="${r}">${r===5?"5+":r}</button>`).join("")}</div></div></div>`}
 function volume(w){return(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(x.type==="warm"?0:(x.kg||0)*(x.reps||0)),0),0)}
 function e1rm(s){return(s.kg||0)*(1+((s.reps||0)+(s.rir||0))/30)}
 
@@ -234,3 +237,36 @@ function barChart(days,target){
  </svg></div>`;
 }
 
+
+/* ---------- Training: Reihenfolge der Übungen per Ziehen ändern (gleiche Bedienung wie im Plan) ---------- */
+function wSortList(A){const l=A.exercises;
+ return`<div class="listhd"><div class="grow"><div class="lbl acc">Reihenfolge ändern</div><div class="small muted">Am Griff ⠿ ziehen oder mit den Pfeilen verschieben. Gilt für dieses Training.</div></div></div>
+ <div class="exlist" id="sortList" data-mode="w">${l.map((e,i)=>{const ex=EXMAP[e.ex];const done=e.sets.filter(x=>x.done&&x.type!=="warm").length,all=e.sets.filter(x=>x.type!=="warm").length;return`<div class="exrow2 sorting" data-i="${i}"><span class="grip" aria-label="Ziehen zum Verschieben">⠿</span><span class="no">${i+1}</span>${exMini(ex)}<div class="grow" style="min-width:0"><b class="ell" style="display:block">${esc(ex?ex.n:e.ex)}</b><div class="small muted">${done} / ${all} Sätze erledigt${e.ss?" · Supersatz "+esc(e.ss):""}</div></div><div class="sortbtns"><button data-act="wSortMv" data-i="${i}" data-n="-1" aria-label="Nach oben" ${i===0?"disabled":""}>▲</button><button data-act="wSortMv" data-i="${i}" data-n="1" aria-label="Nach unten" ${i===l.length-1?"disabled":""}>▼</button></div></div>`}).join("")}</div>
+ <div class="stickybtn"><button class="btn primary block" data-act="wSortOff">✓ Fertig</button></div>`}
+function reorderActive(order){const A=M.active;if(!A)return false;const l=A.exercises;if(order.length!==l.length||order.every((v,i)=>v===i))return false;A.exercises=order.map(i=>l[i]);persist("main");return true}
+
+/* ---------- Satz nach links wischen = löschen (mit „Rückgängig“) ---------- */
+function swipeKnown(){try{return localStorage.getItem("et-swipe")==="1"}catch(e){return true}}
+function deleteSet(ei,si){const A=M.active;if(!A||!A.exercises[ei])return;const e=A.exercises[ei];const removed=e.sets.splice(si,1)[0];if(!removed)return;
+ try{localStorage.setItem("et-swipe","1")}catch(x){}
+ persist("main");render();buzz();
+ toastUndo("Satz gelöscht",()=>{if(!M.active||!M.active.exercises.includes(e))return;e.sets.splice(Math.min(si,e.sets.length),0,removed);persist("main");render();toast("Satz wiederhergestellt")})}
+let SW=null,SWIPE_END=0;
+document.addEventListener("pointerdown",e=>{if(e.button>0)return;const row=e.target.closest(".setswipe>.setrow");if(!row)return;SW={row,wrap:row.parentElement,x:e.clientX,y:e.clientY,id:e.pointerId,on:false,dx:0}},{passive:true});
+document.addEventListener("pointermove",e=>{
+ if(!SW||e.pointerId!==SW.id)return;const dx=e.clientX-SW.x,dy=e.clientY-SW.y;
+ if(!SW.on){
+  if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){SW=null;return} // senkrecht = scrollen
+  if(dx<-12&&Math.abs(dx)>Math.abs(dy)*1.5){SW.on=true;SW.wrap.classList.add("swiping");try{SW.row.setPointerCapture(e.pointerId)}catch(x){}
+   if(document.activeElement&&SW.row.contains(document.activeElement))document.activeElement.blur()}
+  else return}
+ e.preventDefault();SW.dx=Math.min(0,dx);SW.row.style.transform=`translateX(${SW.dx}px)`;
+ const armed=SW.dx<-SW.row.offsetWidth*0.35;if(armed!==SW.wrap.classList.contains("armed")){SW.wrap.classList.toggle("armed",armed);if(armed)buzz()}
+},{passive:false});
+function endSwipe(e){if(!SW||e.pointerId!==SW.id)return;const s=SW;SW=null;if(!s.on)return;SWIPE_END=Date.now();
+ const del=e.type==="pointerup"&&s.dx<-s.row.offsetWidth*0.35;s.row.style.transition="transform .18s ease";
+ if(del){s.row.style.transform="translateX(-110%)";setTimeout(()=>deleteSet(+s.row.dataset.ei,+s.row.dataset.si),170)}
+ else{s.row.style.transform="";setTimeout(()=>{s.wrap.classList.remove("swiping","armed");s.row.style.transition=""},190)}}
+document.addEventListener("pointerup",endSwipe);document.addEventListener("pointercancel",endSwipe);
+// Nach dem Wischen keinen versehentlichen Tipp auslösen (z. B. „✓“ unter dem Finger)
+document.addEventListener("click",e=>{if(Date.now()-SWIPE_END<400&&e.target.closest(".setswipe")){e.stopPropagation();e.preventDefault()}},true);

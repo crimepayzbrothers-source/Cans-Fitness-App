@@ -1,6 +1,6 @@
 // Cans Fitness App – Offline-Cache. Bei Änderungen an der App die Versionsnummer erhöhen.
-const CACHE = "et-v34";
-const SHELL = ["./", "./index.html", "./planner.js?v=28", "./ai.js?v=23", "./figure.js?v=23", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./geraete.js?v=2", "./figure3d.js?v=4", "./three.module.min.js", "./three.core.min.js", "./fonts/barlow-400.woff", "./fonts/barlow-500.woff", "./fonts/barlow-600.woff", "./fonts/exo2-var.woff", "./css/app.css?v=4", "./js/basis.js?v=3", "./js/training.js?v=3", "./js/ernaehrung.js?v=2", "./js/plan.js?v=3", "./js/ansichten.js?v=4", "./js/profil.js?v=2", "./js/aktionen.js?v=5", "./js/start.js?v=1"];
+const CACHE = "et-v35";
+const SHELL = ["./", "./index.html", "./planner.js?v=28", "./ai.js?v=23", "./figure.js?v=23", "./manifest.webmanifest", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon-v2.png", "./geraete.js?v=2", "./figure3d.js?v=4", "./three.module.min.js", "./three.core.min.js", "./fonts/barlow-400.woff", "./fonts/barlow-500.woff", "./fonts/barlow-600.woff", "./fonts/exo2-var.woff", "./css/app.css?v=5", "./js/basis.js?v=3", "./js/training.js?v=4", "./js/ernaehrung.js?v=2", "./js/plan.js?v=4", "./js/ansichten.js?v=5", "./js/profil.js?v=2", "./js/aktionen.js?v=6", "./js/start.js?v=1"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

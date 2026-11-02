@@ -208,7 +208,7 @@ document.addEventListener("pointermove",e=>{
 },{passive:false});
 function endDrag(e){
  if(!DRAG||(e&&e.pointerId!==DRAG.id))return;const d=DRAG;DRAG=null;d.row.classList.remove("drag");
- const order=[...d.list.children].map(r=>+r.dataset.i);if(d.moved&&reorderItems(+d.list.dataset.d,order))toast("Reihenfolge gespeichert");render();
+ const order=[...d.list.children].map(r=>+r.dataset.i);const ok=d.moved&&(d.list.dataset.mode==="w"?reorderActive(order):reorderItems(+d.list.dataset.d,order));if(ok)toast("Reihenfolge gespeichert");render();
 }
 document.addEventListener("pointerup",endDrag);document.addEventListener("pointercancel",endDrag);
 

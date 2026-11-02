@@ -94,6 +94,7 @@ function itemSheet(di,ii){
   <label class="f">Arbeitsgewicht in kg (optional)<input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="itKg" value="${it.kg??""}" placeholder="wird aus deinem Verlauf vorgeschlagen"></label></div>
  <div class="row"><button class="btn ghost grow" data-act="fav">${fav?"★ Bevorzugt":"☆ Bevorzugen"}</button><button class="btn ghost grow" data-act="exclude">Nie mehr vorschlagen</button></div>
  ${alts.length?`<div class="lbl">Tauschen gegen</div><div class="list">${alts.map(a=>`<button class="li" data-act="swap" data-id="${a.id}">${exMini(a)}<div class="n"><div>${esc(a.n)}</div><div class="small muted">${a.pat===ex.pat?"gleiches Bewegungsmuster":"anderes Bewegungsmuster"}${(M.prefs.fav||[]).includes(a.id)?" · bevorzugt":""}</div></div><span class="muted">›</span></button>`).join("")}</div>`:`<div class="small muted">Für diesen Muskel gibt es mit deinen Geräten keine Alternative.</div>`}
+ <button class="btn ghost block" data-act="swapAny">Durch beliebige Übung ersetzen</button><div class="small muted">Auch aus anderen Muskelgruppen. Sätze und Wiederholungen werden an die neue Übung angepasst.</div>
  <div class="row"><button class="btn ghost grow" data-act="mv" data-n="-1">↑ Nach oben</button><button class="btn ghost grow" data-act="mv" data-n="1">↓ Nach unten</button></div>
  <button class="btn danger block" data-act="rmItem">Aus dem Plan entfernen</button></div>`,SH);
 }
