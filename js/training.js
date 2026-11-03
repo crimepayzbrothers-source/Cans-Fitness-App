@@ -255,14 +255,19 @@ function wSortList(A){const l=A.exercises;
  <div class="stickybtn"><button class="btn primary block" data-act="wSortOff">✓ Fertig</button></div>`}
 function reorderActive(order){const A=M.active;if(!A)return false;const l=A.exercises;if(order.length!==l.length||order.every((v,i)=>v===i))return false;A.exercises=order.map(i=>l[i]);persist("main");return true}
 
-/* ---------- Satz nach links wischen = löschen (mit „Rückgängig“) ---------- */
-function swipeKnown(){try{return localStorage.getItem("et-swipe")==="1"}catch(e){return true}}
+/* ---------- Satz bzw. Übung im Plan nach links wischen = löschen (mit „Rückgängig“) ---------- */
+function swipeKnown(k){try{return localStorage.getItem(k==="plan"?"et-swipe-plan":"et-swipe")==="1"}catch(e){return true}}
 function deleteSet(ei,si){const A=M.active;if(!A||!A.exercises[ei])return;const e=A.exercises[ei];const removed=e.sets.splice(si,1)[0];if(!removed)return;
  try{localStorage.setItem("et-swipe","1")}catch(x){}
  persist("main");render();buzz();
  toastUndo("Satz gelöscht",()=>{if(!M.active||!M.active.exercises.includes(e))return;e.sets.splice(Math.min(si,e.sets.length),0,removed);persist("main");render();toast("Satz wiederhergestellt")})}
+function deletePlanItem(di,ii){const P=M.plan;const day=P&&P.days[di];if(!day||!day.items[ii])return;const it=day.items.splice(ii,1)[0];
+ const lg=P.log=P.log||[];const entry={d:today(),t:`${EXMAP[it.ex]?EXMAP[it.ex].n:"Übung"} entfernt`};lg.unshift(entry);
+ try{localStorage.setItem("et-swipe-plan","1")}catch(x){}
+ persist("main");render();buzz();
+ toastUndo("Übung entfernt",()=>{if(M.plan!==P||!P.days.includes(day))return;day.items.splice(Math.min(ii,day.items.length),0,it);const k=lg.indexOf(entry);if(k>=0)lg.splice(k,1);persist("main");render();toast("Übung wiederhergestellt")})}
 let SW=null,SWIPE_END=0;
-document.addEventListener("pointerdown",e=>{if(e.button>0)return;const row=e.target.closest(".setswipe>.setrow");if(!row)return;SW={row,wrap:row.parentElement,x:e.clientX,y:e.clientY,id:e.pointerId,on:false,dx:0}},{passive:true});
+document.addEventListener("pointerdown",e=>{if(e.button>0)return;const row=e.target.closest(".setswipe>.setrow,.setswipe>.exrow2");if(!row)return;SW={row,wrap:row.parentElement,x:e.clientX,y:e.clientY,id:e.pointerId,on:false,dx:0}},{passive:true});
 document.addEventListener("pointermove",e=>{
  if(!SW||e.pointerId!==SW.id)return;const dx=e.clientX-SW.x,dy=e.clientY-SW.y;
  if(!SW.on){
@@ -275,7 +280,7 @@ document.addEventListener("pointermove",e=>{
 },{passive:false});
 function endSwipe(e){if(!SW||e.pointerId!==SW.id)return;const s=SW;SW=null;if(!s.on)return;SWIPE_END=Date.now();
  const del=e.type==="pointerup"&&s.dx<-s.row.offsetWidth*0.35;s.row.style.transition="transform .18s ease";
- if(del){s.row.style.transform="translateX(-110%)";setTimeout(()=>deleteSet(+s.row.dataset.ei,+s.row.dataset.si),170)}
+ if(del){s.row.style.transform="translateX(-110%)";setTimeout(()=>s.row.dataset.si!=null?deleteSet(+s.row.dataset.ei,+s.row.dataset.si):deletePlanItem(+s.row.dataset.d,+s.row.dataset.i),170)}
  else{s.row.style.transform="";setTimeout(()=>{s.wrap.classList.remove("swiping","armed");s.row.style.transition=""},190)}}
 document.addEventListener("pointerup",endSwipe);document.addEventListener("pointercancel",endSwipe);
 // Nach dem Wischen keinen versehentlichen Tipp auslösen (z. B. „✓“ unter dem Finger)
