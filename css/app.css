@@ -457,6 +457,7 @@ button.no{min-width:36px;min-height:44px;display:flex;align-items:center}
 .setswipe.armed>.setdel{background:#E5484D}
 .setswipe.swiping>.setrow{background:var(--surface);border-radius:12px}
 .swipehint{text-align:center;padding-top:2px}
+.setrow input.goal::placeholder{color:var(--accent2);opacity:1}
 .planswipe{border-radius:14px}
 .planswipe>.setdel{inset:0;border-radius:14px}
 .setswipe>.exrow2{position:relative;z-index:1;touch-action:pan-y;will-change:transform}

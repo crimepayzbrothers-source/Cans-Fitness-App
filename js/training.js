@@ -119,15 +119,29 @@ function deleteWorkout(id){const w=WORKOUTS[id];if(!w)return;const copy=clone(w)
  if(M.plan){M.plan.log=M.plan.log||[];M.plan.log.unshift({d:today(),t:`Training „${w.dayName||"Training"}“ vom ${new Date(w.date+"T12:00:00").toLocaleDateString("de-DE")} gelöscht`});M.plan.log=M.plan.log.slice(0,40)}
  persist("workouts/"+id,true);persist("main");closeSheet();render();
  toastUndo("Training gelöscht",()=>{WORKOUTS[id]=copy;if(planBefore&&M.plan&&M.plan.id===planBefore.id)M.plan=planBefore;persist("workouts/"+id,true);persist("main");render();toast("Training wiederhergestellt")})}
-/* Folgesätze nach einem Arbeitssatz anpassen (Logik: PL.nextSetKg). Sätze, deren Gewicht du selbst eingetippt hast, bleiben unangetastet. */
+/* Folgesätze nach einem Arbeitssatz anpassen: Gewicht (PL.nextSetKg) und Wiederholungsziel (PL.nextSetReps).
+   Selbst eingetippte Gewichte bzw. Wiederholungen offener Sätze bleiben unangetastet. */
 function adjustFollowing(ei,si){const A=M.active,e=A.exercises[ei],s=e.sets[si];const lvl=(M.plan&&M.plan.opts&&M.plan.opts.level)||"int";
- const r=PL.nextSetKg(e.ex,e.target,s,lvl);if(!r)return null;
- const idx=e.sets.map((x,i)=>i).filter(i=>i>si&&!e.sets[i].done&&e.sets[i].type!=="warm"&&e.sets[i].type!=="drop"&&!e.sets[i].manual);
- if(!idx.length)return null;idx.forEach(i=>e.sets[i].kg=r.kg);
+ if(!s||!s.reps||s.type==="warm"||s.type==="drop"||PL.isCardio(e.ex))return null;
+ const open=e.sets.map((x,i)=>i).filter(i=>i>si&&!e.sets[i].done&&e.sets[i].type!=="warm"&&e.sets[i].type!=="drop");
+ if(!open.length){delete e.adj;return null}
+ const r=PL.nextSetKg(e.ex,e.target,s,lvl),kgIdx=r?open.filter(i=>!e.sets[i].manual):[];kgIdx.forEach(i=>e.sets[i].kg=r.kg);
+ let goal=null;open.forEach(i=>{const x=e.sets[i],g=PL.nextSetReps(e.ex,e.target,s,x.kg!=null?x.kg:s.kg);if(g==null)return;x.goal=g;if(x.reps!=null&&!x.manualReps)x.reps=g;if(goal==null)goal=g});
+ if(!kgIdx.length&&goal==null){delete e.adj;return null}
  const nr=i=>e.sets.slice(0,i+1).filter(x=>x.type!=="warm").length;
- e.adj={from:s.kg,to:r.kg,why:r.why,max:r.max,sets:idx.map(nr)};return e.adj}
-function adjLine(e){const a=e.adj;if(!a)return"";const up=a.to>a.from,ss=a.sets.length>1?`Sätze ${a.sets[0]}–${a.sets[a.sets.length-1]}`:`Satz ${a.sets[0]}`;
- return`<div class="hint ${up?"up":""}">${up?"↑":"↓"} ${ss} angepasst auf <b class="num">${fmt(a.to,2)} kg</b> (${up?"+":"−"}${fmt(Math.abs(a.to-a.from),2)} kg). ${esc(a.why)}; geschätztes Maximum ${fmt(a.max,1)} kg.</div>`}
+ const nk=e.sets[open[0]].kg;
+ e.adj={from:s.kg,to:kgIdx.length?r.kg:null,kg:nk,why:kgIdx.length?r.why:"",max:kgIdx.length?r.max:null,reps:goal,done:s.reps,rir:s.rir,sets:(kgIdx.length?kgIdx:open).map(nr)};return e.adj}
+function adjTxt(a){if(!a)return"";const kg=a.to!=null?`${fmt(a.to,2)} kg (${a.to>a.from?"+":"−"}${fmt(Math.abs(a.to-a.from),2)} kg)`:a.kg?`${fmt(a.kg,2)} kg`:"";return kg?(a.reps?`${kg} × ${a.reps} Wdh.`:kg):`${a.reps} Wdh.`}
+function adjLine(e){const a=e.adj;if(!a)return"";const ss=a.sets.length>1?`Sätze ${a.sets[0]}–${a.sets[a.sets.length-1]}`:`Satz ${a.sets[0]}`,R=a.reps?` × <b class="num">${a.reps} Wdh.</b>`:"";
+ if(a.to!=null){const up=a.to>a.from;return`<div class="hint ${up?"up":""}">${up?"↑":"↓"} ${ss} angepasst auf <b class="num">${fmt(a.to,2)} kg</b>${R} (${up?"+":"−"}${fmt(Math.abs(a.to-a.from),2)} kg). ${esc(a.why)}; geschätztes Maximum ${fmt(a.max,1)} kg.</div>`}
+ if(!a.reps)return"";const tg=e.target||{};
+ const why=tg.repMax&&a.done>tg.repMax?`${a.done} Wdh. liegen über dem Ziel ${tg.repMin}–${tg.repMax}, für den nächsten Gewichtsschritt reicht es aber noch nicht – also mehr Wiederholungen.`
+  :tg.repMin&&a.done<tg.repMin?`${a.done} Wdh. liegen unter dem Ziel ${tg.repMin}–${tg.repMax} – Ziel entsprechend gesenkt.`
+  :a.reps<a.done&&a.rir!=null?`${a.done} Wdh. mit RIR ${a.rir} waren härter als geplant (RIR ${tg.rir}) – Ziel gesenkt.`
+  :a.reps>a.done&&a.rir!=null?`${a.done} Wdh. mit RIR ${a.rir} – mehr Reserve als geplant (RIR ${tg.rir}), Ziel erhöht.`
+  :`Passend zu deinem letzten Satz (${a.done} Wdh.).`;
+ const up=tg.repMax&&a.reps>tg.repMax,dn=tg.repMin&&a.reps<tg.repMin;
+ return`<div class="hint ${up?"up":""}">${up?"↑":dn?"↓":"→"} ${ss}: Ziel <b class="num">${a.reps} Wdh.</b>${a.kg?` bei ${fmt(a.kg,2)} kg`:""}. ${esc(why)}</div>`}
 function setsTxt(sets){return sets.map(s=>`${fmt(s.kg,1)}×${s.reps}${s.rir!=null?" @"+s.rir:""}`).join(" · ")}
 
 /* ---------- Design: dunkel, hell oder wie das System ---------- */
@@ -190,7 +204,7 @@ function vTrain(){
   ${rc&&rc.stall?`<div class="hint">${esc(rc.stall)}</div>`:""}
   ${adjLine(e)}
   ${warmBlock(A,ei)}
-  ${e.sets.map((s,si)=>setRow(ei,si,s,rc&&rc.reps)).join("")}
+  ${e.sets.map((s,si)=>setRow(ei,si,s,s.goal!=null&&!s.done?s.goal:rc&&rc.reps)).join("")}
   ${ei===0&&e.sets.length&&!swipeKnown()?`<div class="small muted swipehint">Tipp: Satz nach links wischen zum Löschen.</div>`:""}
   <div class="row"><button class="addline grow" data-act="addSet" data-ei="${ei}">＋ Satz</button>${e.sets.some(x=>!x.done)?`<button class="btn sm primary" data-act="focus" data-ei="${ei}">Satz starten</button>`:""}</div></div>`}).join("")}
  ${A.exercises.length>1?`<button class="btn ghost block" data-act="wSortOn">↕ Reihenfolge ändern</button>`:""}
@@ -210,7 +224,7 @@ function savePlanSS(A){const P=M.plan;if(!P||A.planId!==P.id||A.planDay==null||!
 function setRow(ei,si,s,ph){const u=units(M.active&&M.active.exercises[ei]?M.active.exercises[ei].ex:"");return`<div class="setswipe"><div class="setdel" aria-hidden="true">Löschen</div><div class="setrow ${s.done?"done":""}" data-ei="${ei}" data-si="${si}">
  <button class="no st-${s.type||"n"}" data-act="setType" aria-label="Satztyp ändern (Satz ${si+1})">${setLabel(ei,si)}</button>
  <label><div class="sub">${u.kg}</div><input type="text" inputmode="decimal" autocomplete="off" step="0.5" id="w${ei}_${si}_kg" data-w="kg" value="${inNum(s.kg)}" placeholder="–"></label>
- <label><div class="sub">${u.reps}</div><input type="number" inputmode="numeric" id="w${ei}_${si}_reps" data-w="reps" value="${s.reps??""}" placeholder="${ph??"–"}"></label>
+ <label><div class="sub">${u.reps}</div><input type="number" inputmode="numeric" id="w${ei}_${si}_reps" data-w="reps" value="${s.reps??""}" placeholder="${ph??"–"}" ${s.goal!=null&&!s.done?'class="goal"':""}></label>
  <button class="ok" data-act="done" aria-label="Satz erledigt">✓</button>
  <div class="rirline"><span class="lbl">RIR</span>${[0,1,2,3,4,5].map(r=>`<button class="rb ${s.rir===r?"on":""}" data-act="rir" data-r="${r}">${r===5?"5+":r}</button>`).join("")}</div></div></div>`}
 function volume(w){return(w.exercises||[]).filter(e=>!PL.isCardio(e.ex)).reduce((s,e)=>s+e.sets.reduce((a,x)=>a+(x.type==="warm"?0:(x.kg||0)*(x.reps||0)),0),0)}

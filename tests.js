@@ -148,5 +148,12 @@ console.log("Aufwärmsätze:", wuBad.length ? "FEHLER " + wuBad.slice(0, 6) : "o
   const r3 = P.recommend("bench", tg, [{sets: [{kg: 100, reps: 10, rir: 3}, {kg: 100, reps: 10, rir: 3}, {kg: 80, reps: 5, rir: 0, type: "drop"}]}], {});
   const ok = a && a.kg === 102.5 && b === null && c && c.kg === 90 && d && d.kg === 110 && w === null && x === null && r1.kg === 102.5 && r2.kg === 110 && r3.kind === "up";
   console.log("Progression:", ok ? "ok (100×12 → nächste Sätze 102,5 kg; nächstes Mal bis +10 %)" : "FEHLER " + JSON.stringify({a, b, c, d, r1: r1.kg, r2: r2.kg, r3: r3.kind})); if (!ok) fails++; }
+// Wiederholungsziel der Folgesätze
+{ const tg = {repMin: 8, repMax: 12, rir: 1};
+  const a = P.nextSetReps("bench", tg, {kg: 40, reps: 14, rir: 1}, 40), b = P.nextSetReps("bench", tg, {kg: 40, reps: 9, rir: 1}, 40),
+        c = P.nextSetReps("bench", {repMin: 6, repMax: 10, rir: 3}, {kg: 100, reps: 12, rir: 3}, 102.5), d = P.nextSetReps("bench", tg, {kg: 40, reps: 12}, 40),
+        w = P.nextSetReps("bench", tg, {kg: 20, reps: 10, type: "warm"}, 40);
+  const ok = a === 14 && b === 9 && c === 11 && d === 12 && w === null;
+  console.log("Wiederholungsziel:", ok ? "ok (40×14 → nächster Satz 14 Wdh.; 100×12 → 102,5 kg × 11)" : "FEHLER " + JSON.stringify({a, b, c, d, w})); if (!ok) fails++; }
 console.log(fails ? `\n${fails} Profile mit Problemen` : "\nAlle Profile ohne Befund");
 
