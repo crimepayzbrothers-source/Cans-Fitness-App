@@ -174,8 +174,8 @@ function vDay(){
  return`<div class="section">${pageHd("","",'#plan')}
  <div class="card hero tall">${bodySvg(new Set(ms))}<div class="txt"><div class="lbl">${weekdayOf(P,di)!=null?["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"][weekdayOf(P,di)]:"Einheit "+(di+1)}</div><h1>${esc(day.name)}</h1><div class="small muted">${its.length} Übungen · ${PL.estMinutes(its)} Min · ${st&&st.deload?"Deload":intensityTxt(its)}</div><div class="small muted">${ms.map(m=>PL.MUSN[m]).join(" · ")}</div></div></div>
  ${UI.sortDay===di?sortList(di,its):`<div class="listhd"><div class="lbl grow">Übungen</div>${its.length>1?`<button class="btn sm ghost pill" data-act="sortOn" data-d="${di}">↕ Reihenfolge ändern</button>`:""}</div>
- ${its.length&&!swipeKnown("plan")?`<div class="small muted swipehint">Tipp: Übung nach links wischen zum Löschen.</div>`:""}
- <div class="exlist">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<div class="setswipe planswipe"><div class="setdel" aria-hidden="true">Löschen</div><button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b>${it0m(di,ii)}${(M.plan.days[di].items[ii]||{}).missing?"":deviceLine(it.ex)}<div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button></div>`}).join("")}
+ ${planHint(its.length)}
+ <div class="exlist" id="planList" data-d="${di}">${its.map((it,ii)=>{const ex=EXMAP[it.ex];return`<div class="setswipe planswipe"><div class="setdel" aria-hidden="true">Löschen</div><button class="exrow2" data-act="item" data-d="${di}" data-i="${ii}"><span class="no">${ii+1}</span>${exThumb(ex,1)}<div class="grow" style="min-width:0"><b>${esc(ex?ex.n:it.ex)}</b>${it0m(di,ii)}${(M.plan.days[di].items[ii]||{}).missing?"":deviceLine(it.ex)}<div class="small muted">${it.sets} Sätze · ${it.repMin===it.repMax?it.repMin:it.repMin+"–"+it.repMax} Wdh. · RIR ${it.rir}</div>${it.last?`<div class="small" style="color:var(--accent2)">Zuletzt ${fmt(it.last.kg,1)} kg × ${it.last.reps}${it.last.rir!=null?" · RIR "+it.last.rir:""}</div>`:it.kg?`<div class="small muted">${fmt(it.kg,1)} kg</div>`:""}</div>${svgI.chev}</button></div>`}).join("")}
  <button class="addline" data-act="addEx" data-d="${di}">＋ Übung hinzufügen</button></div>
  <button class="btn ghost block" data-act="moveDay" data-d="${di}">📅 Auf anderen Tag verschieben</button>
  <div class="stickybtn"><button class="btn glow block" data-act="start" data-d="${di}">▶ Training starten</button></div>`}</div>`;
@@ -212,6 +212,43 @@ function endDrag(e){
  const order=[...d.list.children].map(r=>+r.dataset.i);const ok=d.moved&&(d.list.dataset.mode==="w"?reorderActive(order):reorderItems(+d.list.dataset.d,order));if(ok)toast("Reihenfolge gespeichert");render();
 }
 document.addEventListener("pointerup",endDrag);document.addEventListener("pointercancel",endDrag);
+
+/* Übersicht einer Einheit: Übung lange drücken und ziehen = Reihenfolge ändern */
+function dragKnown(){try{return localStorage.getItem("et-drag-plan")==="1"}catch(e){return true}}
+function planHint(n){if(!n)return"";const a=[];if(n>1&&!dragKnown())a.push("Übung lange drücken und ziehen zum Verschieben");if(!swipeKnown("plan"))a.push("nach links wischen zum Löschen");
+ if(!a.length)return"";const t=a.join(", ");return`<div class="small muted swipehint">Tipp: ${t[0].toUpperCase()+t.slice(1)}.</div>`}
+let LP=null,PDRAG=null;
+document.addEventListener("pointerdown",e=>{
+ if(e.button>0||PDRAG)return;const row=e.target.closest("#planList .exrow2");if(!row)return;const list=row.closest("#planList");if(list.querySelectorAll(":scope>.planswipe").length<2)return;
+ const id=e.pointerId,x=e.clientX,y=e.clientY;clearTimeout(LP&&LP.t);
+ LP={id,x,y,t:setTimeout(()=>{LP=null;if(typeof SW!=="undefined"&&SW&&SW.on)return;if(typeof SW!=="undefined")SW=null;
+  const item=row.parentElement;PDRAG={item,list,id,moved:false};item.classList.add("pdrag");buzz();
+  if(document.activeElement)document.activeElement.blur()},420)};
+},{passive:true});
+document.addEventListener("pointermove",e=>{
+ if(LP&&e.pointerId===LP.id&&Math.hypot(e.clientX-LP.x,e.clientY-LP.y)>8){clearTimeout(LP.t);LP=null}
+ if(!PDRAG||e.pointerId!==PDRAG.id)return;e.preventDefault();
+ const all=()=>[...PDRAG.list.querySelectorAll(":scope>.planswipe")],items=all().filter(r=>r!==PDRAG.item),y=e.clientY;
+ let before=null;for(const r of items){const b=r.getBoundingClientRect();if(y<b.top+b.height/2){before=r;break}}
+ if(!before)before=PDRAG.list.querySelector(":scope>.addline"); // ans Ende, aber vor „Übung hinzufügen“
+ if(before!==PDRAG.item.nextElementSibling){PDRAG.list.insertBefore(PDRAG.item,before);PDRAG.moved=true;buzz();
+  all().forEach((r,i)=>{const n=r.querySelector(".no");if(n)n.textContent=i+1})}
+ if(y<120)window.scrollBy(0,-12);else if(y>window.innerHeight-170)window.scrollBy(0,12);
+},{passive:false});
+// Während des Ziehens nicht scrollen (Touch-Geräte)
+document.addEventListener("touchmove",e=>{if(PDRAG&&e.cancelable)e.preventDefault()},{passive:false});
+// Langes Drücken soll kein Kontextmenü öffnen
+document.addEventListener("contextmenu",e=>{if(e.target.closest("#planList"))e.preventDefault()});
+function endPDrag(e){
+ if(LP&&e.pointerId===LP.id){clearTimeout(LP.t);LP=null}
+ if(!PDRAG||e.pointerId!==PDRAG.id)return;const d=PDRAG;PDRAG=null;d.item.classList.remove("pdrag");
+ if(typeof SWIPE_END!=="undefined")SWIPE_END=Date.now(); // nachfolgenden Tipp nicht als Öffnen werten
+ const order=[...d.list.querySelectorAll(":scope>.planswipe>.exrow2")].map(r=>+r.dataset.i);
+ const ok=d.moved&&reorderItems(+d.list.dataset.d,order);
+ if(ok){try{localStorage.setItem("et-drag-plan","1")}catch(x){}toast("Reihenfolge gespeichert")}
+ render();
+}
+document.addEventListener("pointerup",endPDrag);document.addEventListener("pointercancel",endPDrag);
 
 /* ---------- 4 Übungsdetail ---------- */
 /* Häufige Fehler je Bewegungsmuster (angelehnt an gängige Trainer-Lehrbücher, z. B. NSCA/ACE) */
