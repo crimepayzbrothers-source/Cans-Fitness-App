@@ -746,6 +746,19 @@ function nextSetKg(exId, target, set, level) {
   return to == null ? null : {kg: Math.round(to * 100) / 100, why, max: Math.round(max1 * 10) / 10};
 }
 
-const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle, mergeData, nextSetKg};
+/* Wiederholungsziel für einen Folgesatz: Aus dem erledigten Satz (Gewicht, Wdh., RIR) wird das geschätzte Maximum
+   berechnet und daraus, wie viele Wiederholungen beim Gewicht des Folgesatzes mit dem geplanten RIR möglich sind.
+   Ohne Zusatzgewicht (Körpergewicht): erreichte Wdh., korrigiert um die Abweichung vom geplanten RIR. */
+function nextSetReps(exId, target, set, kg) {
+  const ex = EXMAP[exId]; if (!ex || isCardio(exId) || !set || set.type === "warm" || set.type === "drop") return null;
+  const tg = target || {repMin: 8, repMax: 12, rir: 2}, reps = +set.reps || 0; if (!reps) return null;
+  const rir = set.rir == null ? tg.rir : set.rir, w0 = +set.kg || 0, w = kg == null ? w0 : +kg;
+  let r;
+  if (ex.kind === "bw" || !w0 || !w) r = reps + (rir - tg.rir);
+  else r = 30 * (w0 * (1 + (reps + rir) / 30) / w - 1) - tg.rir;
+  return Math.max(1, Math.min(50, Math.round(r + 1e-9)));
+}
+
+const API = {isCardio, IMPLIED, hasEq, LOWER, UPPER, MUSCLES, MUSN, TIER, PAT, EX, EXMAP, INJ, INJN, GOALS, LEVELS, SPLITS, SPLIT_WHY, DAYTYPE, hasNeed, weeklyTargets, recommendSplit, generate, scheme, estMinutes, weeklyVolume, mesoState, rirFor, deloadSets, recommend, adapt, nextDay, e1rm, stepFor, PLATES, barFor, plateCalc, warmupSets, REC_H, recovery, hoursToFresh, setsByMuscle, mergeData, nextSetKg, nextSetReps};
 if (typeof module !== "undefined" && module.exports) module.exports = API; else root.Planner = API;
 })(typeof window !== "undefined" ? window : this);

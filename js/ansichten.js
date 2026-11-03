@@ -540,7 +540,7 @@ function focusSheet(ei,si){
  const A=M.active;if(!A)return;const pos=ei!=null?{ei,si}:nextOpenSet();
  if(!pos){toast("Alle Sätze erledigt. Tippe auf Fertig.");return}
  const e=A.exercises[pos.ei],s=e.sets[pos.si],ex=EXMAP[e.ex],tg=e.target||{};
- if(s.kg==null&&e.rec&&e.rec.kg!=null)s.kg=e.rec.kg;if(s.reps==null)s.reps=(e.rec&&e.rec.reps)||tg.repMin||8;if(s.rir==null)s.rir=tg.rir??2;
+ if(s.kg==null&&e.rec&&e.rec.kg!=null)s.kg=e.rec.kg;if(s.reps==null)s.reps=s.goal!=null?s.goal:(e.rec&&e.rec.reps)||tg.repMin||8;if(s.rir==null)s.rir=tg.rir??2;
  SH={focus:pos};
  const C=2*Math.PI*54;const restOn=!!R;
  openSheet(`<div class="focus"><div class="row"><button class="iconbtn" data-act="close" aria-label="Schließen">${svgI.back}</button><div class="grow" style="text-align:center"><h2>Satz ${pos.si+1} von ${e.sets.length}</h2><div class="small muted">${esc(ex?ex.n:e.ex)}</div></div><button class="iconbtn" data-act="exInfo" data-id="${e.ex}" aria-label="Übungsdetails">i</button></div>
